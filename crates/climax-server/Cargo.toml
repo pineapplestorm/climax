@@ -1,6 +1,6 @@
 [package]
 name = "climax-server"
-version = "1.0.0"
+version = "1.1.0"
 description = "Climax headless server - runs the core engine (DB, session, Stash mirror, /rpc + bridge WebSocket) as a standalone always-on process, no desktop client required. Phase 2b of the client-server pivot."
 authors = ["pineapplestorm"]
 edition = "2021"

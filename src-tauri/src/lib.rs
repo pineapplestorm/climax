@@ -106,6 +106,10 @@ pub fn run() {
             commands::open_tracker,
             commands::idle_detection_get,
             commands::idle_detection_set,
+            commands::wording_get,
+            commands::wording_set,
+            commands::keep_empty_sessions_get,
+            commands::keep_empty_sessions_set,
             commands::remote_tracking_get,
             commands::remote_tracking_set,
             commands::capture_prompt_get,
@@ -522,6 +526,13 @@ pub fn run() {
                     tokio::spawn(async move {
                         update::check_if_stale(&update_pool).await;
                     });
+
+                    // Keep a running session's "last seen alive" time current, so
+                    // the next launch's crash recovery (above) measures the real
+                    // gap instead of the time since a scene last played. Host mode
+                    // only: in client mode the server owns the session and runs
+                    // this itself.
+                    crate::session::SessionManager::spawn_liveness(pool.clone());
                 }
 
                 // Idle / AFK detection. Polls every 30s while a session is

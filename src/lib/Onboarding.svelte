@@ -23,6 +23,7 @@
   to true, when Finish runs.
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount } from "svelte";
   import Icon from "$lib/Icon.svelte";
   import { api, type MirrorStatus, type TestConnectionResult, type BridgeStatus } from "$lib/api";
@@ -502,7 +503,7 @@
       <h2>Import your Stash history?</h2>
       <p>
         Climax can pull in everything Stash already knows you've watched - play history
-        and cumshots - as far back as your records go. Your dashboard starts with real
+        and {w("cumshots")} - as far back as your records go. Your dashboard starts with real
         numbers instead of a blank slate.
       </p>
       <p class="muted">You can do this later from Settings.</p>

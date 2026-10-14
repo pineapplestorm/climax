@@ -14,8 +14,10 @@
   below the filter bar.
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount, onDestroy, tick } from "svelte";
   import OPromptModal from "$lib/OPromptModal.svelte";
+  import UnlinkedQuickLog from "$lib/dashboard/UnlinkedQuickLog.svelte";
   import SceneCard from "$lib/SceneCard.svelte";
   import Icon from "$lib/Icon.svelte";
   import HeroStats from "$lib/dashboard/HeroStats.svelte";
@@ -114,7 +116,15 @@
     await refreshActiveAndScenes();
   }
   async function stopSession() {
-    if (active && activeSceneList.length > 0) {
+    // Same rule as the tracker's stop(): wrap up whenever the session will be
+    // kept or has rows to review - any scene, any cumshot (a scene-less one keeps
+    // a session on its own), or "Keep empty sessions" being on.
+    const wrapUp =
+      !!active &&
+      (activeSceneList.length > 0 ||
+        active.o_count > 0 ||
+        (await api.keepEmptySessionsGet().catch(() => false)));
+    if (active && wrapUp) {
       oPromptSessionId = active.id;
       oPromptScenes = activeSceneList;
       oPromptOpen = true;
@@ -730,9 +740,10 @@
         <div class="session-stats">
           <span><strong class="live">{playingCount}</strong> scene{playingCount === 1 ? "" : "s"} playing</span>
           <span><strong>{active.scene_count}</strong> scene{active.scene_count === 1 ? "" : "s"} watched</span>
-          <span><strong class="accent">{active.o_count}</strong> cumshot{active.o_count === 1 ? "" : "s"}</span>
+          <span><strong class="accent">{active.o_count}</strong> {w(active.o_count === 1 ? "cumshot" : "cumshots")}</span>
         </div>
         <div class="session-actions">
+          <UnlinkedQuickLog session={active} refreshKey={lastRefreshAt} onChanged={refreshActiveAndScenes} />
           <button class="secondary" onclick={pauseOrResume}>{active.status === "paused" ? "Resume" : "Pause"}</button>
           <button class="danger" onclick={stopSession}>Stop</button>
         </div>
@@ -754,11 +765,11 @@
               </div>
               <div class="asc-actions">
                 {#if removable > 0}
-                  <button class="cumshot-minus" onclick={() => removeCumshotInline(sc)} aria-label="Remove cumshot" title="Remove the most recent cumshot from this scene, in both Climax and Stash.">
+                  <button class="cumshot-minus" onclick={() => removeCumshotInline(sc)} aria-label={w("Remove cumshot")} title={w("Remove the most recent cumshot from this scene, in both Climax and Stash.")}>
                     <Icon name="minus" size={14} />
                   </button>
                 {/if}
-                <button class="cumshot-plus" onclick={() => logCumshotInline(sc)} aria-label="Add cumshot" title="Log cumshot">
+                <button class="cumshot-plus" onclick={() => logCumshotInline(sc)} aria-label={w("Add cumshot")} title={w("Log cumshot")}>
                   <Icon name="cumshot" size={16} color="var(--accent)" filled />
                 </button>
               </div>
@@ -770,7 +781,10 @@
   {:else}
     <section class="card idle-card">
       <div class="idle-msg">No active session</div>
-      <button class="primary" onclick={startSession}>Start session</button>
+      <div class="idle-actions">
+        <UnlinkedQuickLog session={null} refreshKey={lastRefreshAt} />
+        <button class="primary" onclick={startSession}>Start session</button>
+      </div>
     </section>
   {/if}
 
@@ -966,6 +980,7 @@
     display: flex; align-items: center; justify-content: space-between;
     padding: 18px 22px;
   }
+  .idle-actions { display: flex; align-items: center; gap: 6px; }
   .idle-msg {
     font-size: 12px; color: var(--text-muted);
     text-transform: uppercase; letter-spacing: 0.15em;

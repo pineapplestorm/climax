@@ -7,6 +7,7 @@
   Rank is computed client-side from the full peer list the page already loaded.
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount } from "svelte";
   import Icon from "$lib/Icon.svelte";
   import BarChart, { type ChartBucket } from "$lib/dashboard/BarChart.svelte";
@@ -111,7 +112,7 @@
       item.cumshots_tracked < item.cumshots ? `${item.cumshots_tracked} tracked live` : undefined;
     const t: StatTile[] = [
       { label: "Watch time", value: formatWatchShort(item.watch_time_ms), rank: rankOf("watch_time_ms") },
-      { label: "Cumshots", value: String(item.cumshots), accent: true, rank: rankOf("cumshots"), sub: trackedSub },
+      { label: w("Cumshots"), value: String(item.cumshots), accent: true, rank: rankOf("cumshots"), sub: trackedSub },
       { label: "Play count", value: String(item.play_count), rank: rankOf("play_count") },
       { label: "Sessions", value: String(item.sessions) },
       { label: "Last watched", value: formatAgo(item.last_watched_at) },

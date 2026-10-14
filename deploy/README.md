@@ -21,19 +21,22 @@ never required.
 
 ## Docker
 
-Build and run from the repo root:
+A ready-made image is published with every release, for both amd64 (ordinary
+PCs and most NAS boxes) and arm64 (Raspberry Pi and ARM NAS boxes). Docker
+picks the right one by itself. There is nothing to build:
 
 ```
-docker build -t climax-server .
 docker run -d --name climax \
   --restart unless-stopped \
   -p 9998:9998 \
   -v climax-data:/data \
   -e CLIMAX_TOKEN=change-me \
-  climax-server
+  ghcr.io/pineapplestorm/climax:latest
 ```
 
-Or with compose (edit the token in `docker-compose.yml` first):
+Or with compose. [`docker-compose.yml`](../docker-compose.yml) in the repo root
+works on its own, so copy it wherever you keep your compose files, or paste its
+`climax` service into one you already have. Change the token first, then:
 
 ```
 docker compose up -d
@@ -44,9 +47,29 @@ Settings -> Stash configuration (use the address the SERVER can reach Stash at,
 e.g. `http://192.168.1.20:9999`, not `localhost`, unless Stash runs on the same
 host network).
 
-Multi-arch note: NAS boxes are often ARM. Build for both with
-`docker buildx build --platform linux/amd64,linux/arm64 -t climax-server .`
-(needs a buildx builder with QEMU).
+`latest` follows each release. To stay on one version until you choose to move,
+use its number instead, e.g. `ghcr.io/pineapplestorm/climax:1.0.0`.
+
+To update, fetch the new image and recreate the container. Your library is in
+the volume, so it carries over:
+
+```
+docker compose pull
+docker compose up -d
+```
+
+### Building the image yourself
+
+Only needed if you want to run changes of your own. From the repo root:
+
+```
+docker build -t climax-server .
+```
+
+Then use `climax-server` in place of the `ghcr.io/...` name above, or swap the
+`image:` line in `docker-compose.yml` for `build: .`. This builds for the
+machine it runs on; add `--platform linux/arm64` (or `linux/amd64`) to build
+for the other kind.
 
 ## Bare Linux (no Docker)
 

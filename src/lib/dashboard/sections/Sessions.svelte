@@ -13,6 +13,7 @@
   backend delete_session/cascade rollback).
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount, onDestroy, tick } from "svelte";
   import Select from "$lib/Select.svelte";
   import {
@@ -508,8 +509,8 @@
 
   const deleteMessage = $derived(
     `Permanently delete ${selected.size} session${selected.size === 1 ? "" : "s"}` +
-      `${selectedCumshots > 0 ? ` and ${selectedCumshots} cumshot${selectedCumshots === 1 ? "" : "s"}` : ""}.\n\n` +
-      `The watch time, play counts, and cumshots will also be deleted in Stash. This cannot be undone.`,
+      `${selectedCumshots > 0 ? ` and ${selectedCumshots} ${w(selectedCumshots === 1 ? "cumshot" : "cumshots")}` : ""}.\n\n` +
+      w(`The watch time, play counts, and cumshots will also be deleted in Stash. This cannot be undone.`),
   );
 
   function startLabel(s: Session): { date: string; time: string } {
@@ -669,7 +670,7 @@
                 onclick={() => setSort(col.key)}
               >
                 <span class="th-inner">
-                  {col.label}
+                  {w(col.label)}
                   {#if sortCol === col.key}
                     <Icon name={sortDesc ? "chevron-down" : "chevron-up"} size={12} />
                   {/if}
@@ -756,7 +757,7 @@
       <h3>Merge these two sessions?</h3>
       <p class="merge-span">
         One session, <strong>{fmtDateTime(mergeCheck.merged_start)}</strong> to
-        <strong>{fmtDateTime(mergeCheck.merged_end)}</strong>. Scenes and cumshots combine; this cannot be undone.
+        <strong>{fmtDateTime(mergeCheck.merged_end)}</strong>. Scenes and {w("cumshots")} combine; this cannot be undone.
       </p>
       {#if mergeCheck.gap_ms > 0}
         <label class="merge-gap">
@@ -784,7 +785,7 @@
     <div class="merge-modal" role="document" onclick={(e) => e.stopPropagation()}>
       <h3>Extend this session?</h3>
       <p class="merge-span">
-        Fold in {extendCheck.scene_count} scene{extendCheck.scene_count === 1 ? '' : 's'}{extendCheck.cumshot_count > 0 ? ` and ${extendCheck.cumshot_count} cumshot${extendCheck.cumshot_count === 1 ? '' : 's'}` : ''} that Climax saw after this session, as if it never stopped.
+        Fold in {extendCheck.scene_count} scene{extendCheck.scene_count === 1 ? '' : 's'}{extendCheck.cumshot_count > 0 ? ` and ${extendCheck.cumshot_count} ${w(extendCheck.cumshot_count === 1 ? 'cumshot' : 'cumshots')}` : ''} that Climax saw after this session, as if it never stopped.
       </p>
       {#if extendCheck.gap_ms > 0}
         <label class="merge-gap">

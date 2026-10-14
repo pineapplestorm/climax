@@ -15,6 +15,7 @@
   page has its own Apply (immediate), so the Save footer is hidden there.
 -->
 <script lang="ts">
+  import { w, wording, type Wording } from "$lib/wording.svelte";
   import { onMount, onDestroy } from "svelte";
   import {
     api,
@@ -130,6 +131,27 @@
   let captureEnabled = $state(false);
   let captureThresholdMinutes = $state(3);
   let captureSnoozeMinutes = $state(30);
+
+  // Wording (General page). Applies the moment it is picked, like the rest of
+  // that page; the store updates every open view and the backend.
+  let wordingErr = $state<string | null>(null);
+  async function pickWording(v: Wording) {
+    if (wording.value === v) return;
+    wordingErr = null;
+    try {
+      await wording.set(v);
+    } catch (e) {
+      console.error("set wording failed", e);
+      wordingErr = "Couldn't save that." + serverHint();
+    }
+  }
+
+  // Keep empty sessions (stop keeps a session with nothing logged in it).
+  // `keepEmptyLoaded` is what the backend last reported, so Save only writes it
+  // when it actually changed - a desktop client pointed at an older server that
+  // has never heard of the setting can still save everything else.
+  let keepEmptySessions = $state(false);
+  let keepEmptyLoaded = false;
 
   // Stash connection form.
   let stashUrl = $state("http://localhost:9999");
@@ -319,7 +341,7 @@
     // earlier, so a dismissal made there shows correctly here.
     void updateCheck.load();
     try {
-      const [idle, remote, capture, stash, play, mirror, mstatus, meta, metaStatus, autostart, launchBeh, hotkeyEn] = await Promise.all([
+      const [idle, remote, capture, stash, play, mirror, mstatus, meta, metaStatus, autostart, launchBeh, hotkeyEn, keepEmpty] = await Promise.all([
         api.idleDetectionGet(),
         api.remoteTrackingGet(),
         api.capturePromptGet(),
@@ -332,7 +354,10 @@
         api.autostartGet().catch(() => false),
         api.launchBehaviorGet().catch(() => "tracker"),
         api.hotkeyEnabledGet().catch(() => true),
+        api.keepEmptySessionsGet().catch(() => false),
       ]);
+      keepEmptySessions = keepEmpty;
+      keepEmptyLoaded = keepEmpty;
       idleEnabled = idle.enabled;
       idleThresholdMinutes = idle.threshold_minutes;
       remoteEnabled = remote.enabled;
@@ -528,6 +553,10 @@
       const capThresh = Math.max(1, Math.floor(captureThresholdMinutes || 3));
       const capSnooze = Math.max(1, Math.floor(captureSnoozeMinutes || 30));
       const _capture: CapturePromptSetting = await api.capturePromptSet(captureEnabled, capThresh, capSnooze);
+
+      if (keepEmptySessions !== keepEmptyLoaded) {
+        keepEmptyLoaded = await api.keepEmptySessionsSet(keepEmptySessions);
+      }
 
       await persistStashConnection();
 
@@ -793,7 +822,7 @@
                 <div class="group-header">
                   <h3>Play history</h3>
                   <p class="group-help">
-                    Keeps cumshots, play count, and watch time matched to Stash,
+                    Keeps {w("cumshots")}, play count, and watch time matched to Stash,
                     including history from before you installed Climax. Runs when
                     Climax launches and again on the interval below.
                   </p>
@@ -969,6 +998,24 @@
                   </label>
                 {/if}
               </section>
+
+              <!-- Keep empty sessions. Server-side rule (the backend decides what
+                   a stopped session becomes), so it is NOT desktop-gated. -->
+              <section class="setting-group">
+                <div class="group-header">
+                  <h3>Empty sessions</h3>
+                  <p class="group-help">
+                    A session with no scenes and no {w("cumshots")} is normally discarded
+                    when you stop it. Turn this on to keep it, so Climax can work as
+                    a plain timer without Stash.
+                  </p>
+                </div>
+                <label class="row toggle">
+                  <span>Keep empty sessions</span>
+                  <input class="switch-input" type="checkbox" bind:checked={keepEmptySessions} />
+                  <span class="switch"></span>
+                </label>
+              </section>
             {/if}
 
             {#if activePage === 'stash'}
@@ -1073,6 +1120,28 @@
                   </div>
                 </section>
               {/if}
+
+              <!-- Wording. The two button labels are the literal choices, so
+                   they are deliberately NOT passed through w(). -->
+              <section class="setting-group">
+                <div class="group-header">
+                  <h3>Wording</h3>
+                  <p class="group-help">
+                    Choose the word Climax uses throughout the app. This only
+                    changes what you see.
+                  </p>
+                </div>
+                <div class="row">
+                  <span class="label">Use the word</span>
+                  <span class="control">
+                    <div class="cx-toggle" role="group" aria-label="Word used throughout the app">
+                      <button class:active={wording.value === "cumshot"} aria-pressed={wording.value === "cumshot"} onclick={() => pickWording("cumshot")}>Cumshot</button>
+                      <button class:active={wording.value === "orgasm"} aria-pressed={wording.value === "orgasm"} onclick={() => pickWording("orgasm")}>Orgasm</button>
+                    </div>
+                    {#if wordingErr}<span class="status err">{wordingErr}</span>{/if}
+                  </span>
+                </div>
+              </section>
 
               <!-- First-launch setup -->
               <section class="setting-group">

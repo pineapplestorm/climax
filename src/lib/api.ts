@@ -373,6 +373,19 @@ export const api = {
       pollSeconds,
     }),
 
+  // ---------- Wording (cumshot / orgasm) ----------
+  // Display only. Read and written through src/lib/wording.svelte.ts, which
+  // owns the reactive copy every component reads - call that, not these.
+  wordingGet: () => invoke<string>("wording_get"),
+  wordingSet: (value: string) => invoke<string>("wording_set", { value }),
+
+  // ---------- Keep empty sessions ----------
+  // Off (the default): stopping a session with no counted scene and no cumshot
+  // discards it. On: it is kept, so Climax works as a plain timer.
+  keepEmptySessionsGet: () => invoke<boolean>("keep_empty_sessions_get"),
+  keepEmptySessionsSet: (enabled: boolean) =>
+    invoke<boolean>("keep_empty_sessions_set", { enabled }),
+
   // ---------- Passive-capture prompt ----------
   capturePromptGet: () =>
     invoke<CapturePromptSetting>("capture_prompt_get"),

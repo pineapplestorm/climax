@@ -10,6 +10,7 @@
   builder's entity / time-of-day groupings).
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import "./trends.css";
   import { onMount } from "svelte";
   import Icon from "$lib/Icon.svelte";
@@ -172,16 +173,16 @@
   );
 
   const busiestSub = $derived(
-    busiestMetric === "cumshots" ? "Cumshots by day of week"
+    busiestMetric === "cumshots" ? w("Cumshots by day of week")
     : busiestMetric === "watch_time" ? "Watch time by day of week"
     : "Sessions by day of week",
   );
   const peakSub = $derived(
-    peakMetric === "cumshots" ? "Cumshots by hour of day" : "Session starts by hour of day",
+    peakMetric === "cumshots" ? w("Cumshots by hour of day") : "Session starts by hour of day",
   );
 
   function countPhrase(v: number, noun: string): string {
-    return `${v} ${noun}${v === 1 ? "" : "s"}`;
+    return w(`${v} ${noun}${v === 1 ? "" : "s"}`);
   }
   const busiestFmt = $derived((v: number) =>
     busiestMetric === "watch_time"
@@ -376,7 +377,7 @@
       <div class="cx-trend-chart-controls">
         <MetricDefaultPill scope="trends_busiest" current={busiestMetric} />
         <div class="cx-toggle">
-          <button class:active={busiestMetric === "cumshots"} onclick={() => (busiestMetric = "cumshots")}>Cumshots</button>
+          <button class:active={busiestMetric === "cumshots"} onclick={() => (busiestMetric = "cumshots")}>{w("Cumshots")}</button>
           <button class:active={busiestMetric === "watch_time"} onclick={() => (busiestMetric = "watch_time")}>Watch time</button>
           <button class:active={busiestMetric === "sessions"} onclick={() => (busiestMetric = "sessions")}>Sessions</button>
         </div>
@@ -386,7 +387,7 @@
       <div class="cx-trend-chart-controls">
         <MetricDefaultPill scope="trends_peak" current={peakMetric} />
         <div class="cx-toggle">
-          <button class:active={peakMetric === "cumshots"} onclick={() => (peakMetric = "cumshots")}>Cumshots</button>
+          <button class:active={peakMetric === "cumshots"} onclick={() => (peakMetric = "cumshots")}>{w("Cumshots")}</button>
           <button class:active={peakMetric === "sessions"} onclick={() => (peakMetric = "sessions")}>Sessions</button>
         </div>
       </div>
@@ -419,7 +420,7 @@
       <div class="cx-trend-chart-controls">
         <MetricDefaultPill scope="trends_rankings" current={leaderMetric} />
         <div class="cx-toggle">
-          <button class:active={leaderMetric === "cumshots"} onclick={() => (leaderMetric = "cumshots")}>Cumshots</button>
+          <button class:active={leaderMetric === "cumshots"} onclick={() => (leaderMetric = "cumshots")}>{w("Cumshots")}</button>
           <button class:active={leaderMetric === "watch_time"} onclick={() => (leaderMetric = "watch_time")}>Watch time</button>
           <button class:active={leaderMetric === "sessions"} onclick={() => (leaderMetric = "sessions")}>Sessions</button>
         </div>

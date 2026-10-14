@@ -6,6 +6,7 @@
 // rows are derived here by slicing / bucketing that series. Keeps the chart
 // math in one place and matches the rest of the app's metric vocabulary.
 
+import { w } from "$lib/wording.svelte";
 import {
   type DailyActivity,
   type EntityBreakdownRow,
@@ -37,7 +38,10 @@ export interface MetricDef {
 }
 
 export const METRICS: Record<MetricId, MetricDef> = {
-  cumshots:   { id: "cumshots",   label: "Cumshots",    color: "var(--accent)",    fmt: (v) => String(v) },
+  // A getter, not a value: the label follows the Wording setting, and reading it
+  // from a template keeps that template reactive to the change. It also means
+  // the CSV export's header and filename use the same word the screen shows.
+  cumshots:   { id: "cumshots",   get label() { return w("Cumshots"); }, color: "var(--accent)", fmt: (v) => String(v) },
   watch_time: { id: "watch_time", label: "Watch time",  color: "var(--fg-strong)", fmt: (v) => formatWatchShort(v) },
   sessions:   { id: "sessions",   label: "Sessions",    color: "var(--highlight)", fmt: (v) => String(v) },
   active:     { id: "active",     label: "Active days", color: "var(--live)",      fmt: (v) => String(v) },

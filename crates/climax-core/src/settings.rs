@@ -777,6 +777,90 @@ pub async fn set_hotkey_enabled(pool: &SqlitePool, enabled: bool) -> Result<()> 
 }
 
 // ---------------------------------------------------------------------------
+// wording - which word the interface uses for an O: "cumshot" (the default) or
+// "orgasm". DISPLAY ONLY. Every table, column, command name and setting key
+// keeps saying cumshot whichever is chosen; the frontend swaps the visible word
+// (src/lib/wording.svelte.ts) and the tray tooltip follows it. Stored here, not
+// per device, so the choice follows the user to every client of this backend.
+// ---------------------------------------------------------------------------
+
+pub const WORDING_DEFAULT: &str = "cumshot";
+
+/// Anything that is not a known value reads as the default, so a hand-edited or
+/// future value can never leave the interface without a word to use.
+pub fn normalise_wording(raw: &str) -> &'static str {
+    match raw {
+        "orgasm" => "orgasm",
+        _ => WORDING_DEFAULT,
+    }
+}
+
+pub async fn get_wording(pool: &SqlitePool) -> Result<String> {
+    let raw: Option<String> = sqlx::query_scalar(
+        "SELECT value_json FROM settings WHERE key = 'wording'",
+    )
+    .fetch_optional(pool)
+    .await
+    .context("read wording setting")?;
+    let val = raw
+        .and_then(|s| serde_json::from_str::<String>(&s).ok())
+        .unwrap_or_else(|| WORDING_DEFAULT.to_string());
+    Ok(normalise_wording(&val).to_string())
+}
+
+pub async fn set_wording(pool: &SqlitePool, value: &str) -> Result<String> {
+    let value = normalise_wording(value);
+    let value_json = serde_json::to_string(value).context("serialize wording")?;
+    sqlx::query(
+        "INSERT INTO settings (key, value_json, updated_at)
+         VALUES ('wording', ?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at",
+    )
+    .bind(value_json)
+    .bind(now_ms())
+    .execute(pool)
+    .await
+    .context("write wording setting")?;
+    Ok(value.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// keep_empty_sessions - whether stopping a session with nothing in it (no
+// counted scene, no cumshot) keeps it instead of discarding it. Default false,
+// which is the behaviour every install had before the setting existed. On, it
+// lets Climax be used as a plain timer by someone who is not watching anything
+// in Stash. Read by SessionManager::stop, the one place that auto-discards.
+// ---------------------------------------------------------------------------
+
+pub async fn get_keep_empty_sessions(pool: &SqlitePool) -> Result<bool> {
+    let raw: Option<String> = sqlx::query_scalar(
+        "SELECT value_json FROM settings WHERE key = 'keep_empty_sessions'",
+    )
+    .fetch_optional(pool)
+    .await
+    .context("read keep_empty_sessions setting")?;
+    Ok(raw
+        .and_then(|s| serde_json::from_str::<bool>(&s).ok())
+        .unwrap_or(false))
+}
+
+pub async fn set_keep_empty_sessions(pool: &SqlitePool, enabled: bool) -> Result<()> {
+    let value_json =
+        serde_json::to_string(&enabled).context("serialize keep_empty_sessions")?;
+    sqlx::query(
+        "INSERT INTO settings (key, value_json, updated_at)
+         VALUES ('keep_empty_sessions', ?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at",
+    )
+    .bind(value_json)
+    .bind(now_ms())
+    .execute(pool)
+    .await
+    .context("write keep_empty_sessions setting")?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // http_port - the port a Climax backend serves on (/rpc, /health, and the
 // bridge's /ws). The desktop app reads it once at boot, since that's when the
 // server binds, so a change takes effect on the next launch. The standalone

@@ -12,6 +12,7 @@
   Then stop the session.
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onDestroy, onMount } from "svelte";
   import { api, dayKey, dayKeyLabel, type PlayedScene, type Session, type OEvent } from "$lib/api";
   import Icon from "$lib/Icon.svelte";
@@ -210,9 +211,9 @@
       <h2>Wrap up this session</h2>
       <p class="subtitle">
         {#if totalCurrent === 0}
-          No cumshots logged yet. Add one with the cumshot button, or just stop if none happened.
+          {w("No cumshots logged yet. Add one with the cumshot button, or just stop if none happened.")}
         {:else}
-          {totalCurrent} cumshot{totalCurrent === 1 ? "" : "s"} already logged. Adjust counts below if needed.
+          {totalCurrent} {w(totalCurrent === 1 ? "cumshot" : "cumshots")} already logged. Adjust counts below if needed.
         {/if}
       </p>
     </header>
@@ -260,7 +261,7 @@
               class="counter-btn"
               disabled={!canRemove || submitting}
               onclick={() => adjust(sc.content_item_id, sc.cumshot_count, -1)}
-              aria-label="Remove a cumshot from this scene"
+              aria-label={w("Remove a cumshot from this scene")}
             >-</button>
             <span class="count">
               {after}
@@ -274,7 +275,7 @@
               class="counter-btn add"
               disabled={submitting}
               onclick={() => adjust(sc.content_item_id, sc.cumshot_count, 1)}
-              aria-label="Add a cumshot to this scene"
+              aria-label={w("Add a cumshot to this scene")}
             >
               <Icon name="cumshot" size={16} color="var(--accent)" filled />
             </button>
@@ -293,7 +294,7 @@
           {#if belowThreshold}
             <span
               class="threshold-note"
-              title="This scene was open less than your play threshold. It won't be counted as a play unless you log a cumshot on it."
+              title={w("This scene was open less than your play threshold. It won't be counted as a play unless you log a cumshot on it.")}
             >below threshold</span>
           {/if}
         </div>
@@ -329,7 +330,7 @@
       <div class="unlinked-meta">
         <Icon name="cumshot" size={15} filled color="var(--accent)" />
         <div class="unlinked-text">
-          <span class="unlinked-title">Cumshots with no scene</span>
+          <span class="unlinked-title">{w("Cumshots with no scene")}</span>
           <span class="unlinked-sub">Not tied to anything in Stash. Never synced.</span>
         </div>
       </div>
@@ -338,7 +339,7 @@
           class="counter-btn"
           disabled={unlinkedAfter === 0 || submitting}
           onclick={() => adjustUnlinked(-1)}
-          aria-label="Remove an unlinked cumshot"
+          aria-label={w("Remove an unlinked cumshot")}
         >-</button>
         <span class="count">
           {unlinkedAfter}
@@ -352,7 +353,7 @@
           class="counter-btn add"
           disabled={submitting}
           onclick={() => adjustUnlinked(1)}
-          aria-label="Add an unlinked cumshot"
+          aria-label={w("Add an unlinked cumshot")}
         >
           <Icon name="cumshot" size={16} color="var(--accent)" filled />
         </button>
@@ -381,8 +382,8 @@
       <div class="summary">
         {#if totalDelta === 0}
           {totalCurrent > 0
-            ? `${totalCurrent} cumshot${totalCurrent === 1 ? "" : "s"} this session`
-            : "No cumshots to log"}
+            ? w(`${totalCurrent} cumshot${totalCurrent === 1 ? "" : "s"} this session`)
+            : w("No cumshots to log")}
         {:else}
           <strong class:positive={totalDelta > 0} class:negative={totalDelta < 0}>
             {totalAdds > 0 && totalDeletes > 0

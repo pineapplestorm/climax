@@ -18,6 +18,7 @@
    - Sessions    → bone (--highlight)
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { formatDuration } from "$lib/api";
   import MetricDefaultPill from "$lib/dashboard/MetricDefaultPill.svelte";
 
@@ -85,7 +86,7 @@
   function metricUnitLabel(m: Metric): string {
     switch (m) {
       case "watch_time": return "Watch time (hh:mm)";
-      case "cumshots":   return "Cumshots";
+      case "cumshots":   return w("Cumshots");
       case "sessions":   return "Sessions";
     }
   }
@@ -93,7 +94,7 @@
   function metricName(m: Metric): string {
     switch (m) {
       case "watch_time": return "Watch time";
-      case "cumshots":   return "Cumshots";
+      case "cumshots":   return w("Cumshots");
       case "sessions":   return "Sessions";
     }
   }
@@ -130,7 +131,7 @@
   function tooltipFor(b: ChartBucket): string {
     const wt = formatDuration(b.watch_time_ms);
     const detail = b.tooltipDetail ? ` (${b.tooltipDetail})` : "";
-    return `${b.label}${detail} - ${wt} • ${b.sessions} session${b.sessions === 1 ? "" : "s"} • ${b.cumshots} cumshot${b.cumshots === 1 ? "" : "s"}`;
+    return `${b.label}${detail} - ${wt} • ${b.sessions} session${b.sessions === 1 ? "" : "s"} • ${b.cumshots} ${w(b.cumshots === 1 ? "cumshot" : "cumshots")}`;
   }
 
   function handleClick(b: ChartBucket) {
@@ -144,7 +145,7 @@
     <div class="metric-controls">
       {#if defaultPill}<MetricDefaultPill scope={defaultScope} current={metric} />{/if}
       <div class="metric-toggle">
-        <button class:active={metric === "cumshots"}   onclick={() => metric = "cumshots"}>Cumshots</button>
+        <button class:active={metric === "cumshots"}   onclick={() => metric = "cumshots"}>{w("Cumshots")}</button>
         <button class:active={metric === "watch_time"} onclick={() => metric = "watch_time"}>Watch time</button>
         <button class:active={metric === "sessions"}   onclick={() => metric = "sessions"}>Sessions</button>
       </div>

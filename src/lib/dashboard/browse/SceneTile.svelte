@@ -22,6 +22,7 @@
      any, so `squeezed()` watches it directly (same trick as StudioTile's parent
      studio). -->
 <script lang="ts">
+  import { w, wording } from "$lib/wording.svelte";
   import Icon from "$lib/Icon.svelte";
   import { formatDurationShort, formatAgo, type BrowseScene, type NamedEntity } from "$lib/api";
   import { watchLabel, runFitLadder } from "./tile-fit";
@@ -100,6 +101,8 @@
     const el = rowEl;
     // Data deps: a tile re-used with different stats must re-measure.
     void scene.cumshots;
+    // The word itself changes width when the Wording setting flips.
+    void wording.value;
     void scene.watch_time_ms;
     void scene.play_count;
     void scene.last_watched_at;
@@ -149,12 +152,12 @@
     <div class="cx-tile-title">{scene.title ?? `Scene ${scene.external_id ?? "?"}`}</div>
     <div class="cx-tile-stats" bind:this={rowEl}>
       {#if scene.cumshots > 0}
-        <span class="cx-tile-cumshots" title="{scene.cumshots} cumshot{scene.cumshots === 1 ? '' : 's'}">
+        <span class="cx-tile-cumshots" title={w(`${scene.cumshots} cumshot${scene.cumshots === 1 ? "" : "s"}`)}>
           <Icon name="cumshot" size={14} color="var(--accent)" filled />
           {#if dropCumshotWord}
             <span class="cx-tile-cumshots-n">{scene.cumshots}</span>
           {:else}
-            <span><span class="cx-tile-cumshots-n">{scene.cumshots}</span> {scene.cumshots === 1 ? "cumshot" : "cumshots"}</span>
+            <span><span class="cx-tile-cumshots-n">{scene.cumshots}</span> {w(scene.cumshots === 1 ? "cumshot" : "cumshots")}</span>
           {/if}
         </span>
         <span class="cx-tile-sep">·</span>

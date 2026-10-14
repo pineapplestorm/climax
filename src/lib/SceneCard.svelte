@@ -6,6 +6,7 @@
   the dashboard polls every 2s so this auto-fills in.
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { formatDuration, parseSceneMetadata, type PlayedScene } from "$lib/api";
   import { stashConfig } from "$lib/stash-config.svelte";
   import Icon from "$lib/Icon.svelte";
@@ -85,7 +86,7 @@
       {@render thumbInner()}
     {/if}
     {#if totalCumshots > 0}
-      <span class="thumb-badge" title="Cumshots logged on this scene in this session">
+      <span class="thumb-badge" title={w("Cumshots logged on this scene in this session")}>
         <Icon name="cumshot" size={11} filled />
         <span>{totalCumshots}</span>
       </span>

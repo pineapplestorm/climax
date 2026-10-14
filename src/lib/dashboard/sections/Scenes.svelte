@@ -4,6 +4,7 @@
   filtering wired through the shared BrowsePage chassis.
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount, onDestroy } from "svelte";
   import { api, type BrowseScene } from "$lib/api";
   import type { ChipDef } from "$lib/dashboard/browse/BrowseFilterBar.svelte";
@@ -67,7 +68,7 @@
   ]);
 
   const sortOptions = [
-    { value: "cumshots", label: "Most cumshots" },
+    { value: "cumshots", get label() { return w("Most cumshots"); } },
     { value: "play_count", label: "Play count" },
     { value: "watch_time", label: "Watch time" },
     { value: "recent", label: "Recently watched" },
@@ -85,7 +86,7 @@
     for (const s of items) if (s.cumshots > best) best = s.cumshots;
     return new Set(best > 0 ? items.filter((s) => s.cumshots === best).map((s) => s.id) : []);
   });
-  const trophyTitle = $derived(`Ranked #1 of ${items.length} scenes by cumshots`);
+  const trophyTitle = $derived(`Ranked #1 of ${items.length} scenes by ${w("cumshots")}`);
 
   function applyFilters(list: BrowseScene[], f: Record<string, string>, q: string): BrowseScene[] {
     let r = list;

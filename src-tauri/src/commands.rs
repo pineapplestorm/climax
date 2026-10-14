@@ -319,6 +319,27 @@ pub async fn idle_detection_set(
 // ---------- Remote-device tracking (live Stash play_duration poll) ----------
 
 #[tauri::command]
+pub async fn wording_get(state: State<'_, AppState>) -> CmdResult<String> {
+    settings::get_wording(&state.pool).await.map_err(err)
+}
+
+#[tauri::command]
+pub async fn wording_set(state: State<'_, AppState>, value: String) -> CmdResult<String> {
+    settings::set_wording(&state.pool, &value).await.map_err(err)
+}
+
+#[tauri::command]
+pub async fn keep_empty_sessions_get(state: State<'_, AppState>) -> CmdResult<bool> {
+    settings::get_keep_empty_sessions(&state.pool).await.map_err(err)
+}
+
+#[tauri::command]
+pub async fn keep_empty_sessions_set(state: State<'_, AppState>, enabled: bool) -> CmdResult<bool> {
+    settings::set_keep_empty_sessions(&state.pool, enabled).await.map_err(err)?;
+    Ok(enabled)
+}
+
+#[tauri::command]
 pub async fn remote_tracking_get(state: State<'_, AppState>) -> CmdResult<RemoteTrackingSetting> {
     settings::get_remote_tracking(&state.pool).await.map_err(err)
 }

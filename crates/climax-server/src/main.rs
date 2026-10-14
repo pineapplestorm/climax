@@ -248,6 +248,11 @@ async fn main() -> Result<()> {
         if token.is_some() { "required" } else { "off" },
     );
 
+    // Keep a running session's "last seen alive" time current, so the next boot's
+    // crash recovery (above) measures the real downtime instead of the time since
+    // a scene last played. Started here, after that recovery has run.
+    climax_core::session::SessionManager::spawn_liveness(state.pool.clone());
+
     // Periodic GC of the per-tab heartbeat cache (tabs that disconnect silently).
     {
         let state = state.clone();

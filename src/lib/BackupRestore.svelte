@@ -10,6 +10,7 @@
   title + chrome, so this only draws the body.
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount } from "svelte";
   import {
     api,
@@ -327,7 +328,7 @@
       <div class="group-header"><h3>Back up your library</h3></div>
       <p class="group-help">
         Download a single-file snapshot of everything Climax holds: sessions,
-        cumshots, watch time, imported Stash history, and settings. The server
+        {w("cumshots")}, watch time, imported Stash history, and settings. The server
         creates the snapshot and your browser saves it like any download - so you
         can back up from whichever device you're viewing on.
       </p>
@@ -356,7 +357,7 @@
       <div class="group-header"><h3>Danger zone</h3></div>
       <p class="group-help">
         Reset Climax to a clean slate. This wipes ALL data - every session,
-        cumshot, watch time, and imported Stash history, plus settings (including
+        {w("cumshot")}, watch time, and imported Stash history, plus settings (including
         the Stash connection). The server then restarts empty (as if freshly
         installed) and the first-launch setup runs again. NOTE: This CANNOT be
         undone; restoring a backup is the ONLY way back, so download a backup
@@ -389,7 +390,7 @@
   <section class="setting-group">
     <div class="group-header"><h3>Back up your library</h3></div>
     <p class="group-help">
-      Save a single-file snapshot of everything Climax holds: sessions, cumshots,
+      Save a single-file snapshot of everything Climax holds: sessions, {w("cumshots")},
       watch time, imported Stash history, and settings. It does not include Stash
       itself or your video files. Each backup is timestamped, so a new one never
       overwrites an older one.
@@ -435,7 +436,7 @@
   <section class="setting-group danger-zone">
     <div class="group-header"><h3>Danger zone</h3></div>
     <p class="group-help">
-      Reset Climax to a clean slate. This wipes ALL data - every session, cumshot,
+      Reset Climax to a clean slate. This wipes ALL data - every session, {w("cumshot")},
       watch time, and imported Stash history, plus your settings (including the
       Stash connection). Climax will then restart (as if freshly installed) and
       run the first-launch setup again. NOTE: This CANNOT be undone; restoring a

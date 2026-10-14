@@ -116,13 +116,13 @@ The desktop app lives in your tray, so closing the window puts it away rather th
 
 Climax also runs headless: the same application with no windows, keeping the database and doing the tracking on a machine that stays on.
 
-That suits you if tracking should not depend on one particular computer being awake, if you watch across a few devices and want the lot in one history, or if you already have a NAS or home server doing jobs like this. It runs in Docker, so anything that runs Docker will do.
+That suits you if tracking should not depend on one particular computer being awake, if you watch across a few devices and want the lot in one history, or if you already have a NAS or home server doing jobs like this. It runs in Docker, so anything that runs Docker will do. A ready-made image is published with every release, so there is nothing to build.
 
 With no windows, you reach it in a browser: the full dashboard, from any device on your network, phone included. Point the bridge at the server's address and everything you watch lands there, whichever machine you happened to be on.
 
 The desktop app can then run alongside it as a client rather than on its own, connecting to the server instead of keeping its own copy. You keep the tray, the keyboard shortcut, idle detection and the tracker window on the machine you sit at, while the history lives on the server.
 
-Compose file and deployment notes are in [`deploy/`](deploy/README.md).
+The image, a compose file and the deployment notes are under [Run the server](#run-the-server) below.
 
 ## Requirements
 
@@ -134,7 +134,22 @@ Windows and macOS both ship as normal installers; the Mac build is Apple Silicon
 
 ### Install the app
 
-Download the latest installer from [Releases](https://github.com/pineapplestorm/climax/releases) and run it. Neither build is code signed, so Windows shows SmartScreen (choose **More info**, then **Run anyway**) and macOS needs a right-click then **Open** the first time.
+Download the latest installer from [Releases](https://github.com/pineapplestorm/climax/releases) and run it. Neither build is code signed, so each needs one extra step the first time. Windows shows SmartScreen: choose **More info**, then **Run anyway**. macOS refuses to open it: go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the Climax message.
+
+### Run the server
+
+Skip this if you installed the app; it is for running Climax headless instead. The image is `ghcr.io/pineapplestorm/climax`, built for amd64 and arm64, and Docker picks the right one for the machine:
+
+```
+docker run -d --name climax \
+  --restart unless-stopped \
+  -p 9998:9998 \
+  -v climax-data:/data \
+  -e CLIMAX_TOKEN=change-me \
+  ghcr.io/pineapplestorm/climax:latest
+```
+
+Change the token to something of your own, then open `http://<server>:9998` in a browser. Prefer compose? [`docker-compose.yml`](docker-compose.yml) works on its own, and its `climax` service can be pasted into a compose file you already keep, next to Stash for instance. Everything else, including updating and running it without Docker, is in [`deploy/`](deploy/README.md).
 
 ### Add the bridge plugin
 
@@ -163,6 +178,8 @@ Setup offers to import what Stash already knows and to estimate past sessions fr
 **Does it track what I watch on my phone or TV?** - Yes. The bridge only sees browser playback, so anything else is picked up from Stash's own activity. That path is coarser, since Stash reports roughly every half minute.
 
 **Does it keep tracking when I close the window?** - Closing hides it to the tray and tracking carries on. Quitting stops it. Run it as a server for tracking that does not depend on any window being open.
+
+**Can I time a session with nothing playing?** - Yes, if you switch it on. A session with no scene and nothing logged is thrown away when you stop it, on the assumption that it was a misfire. Turn on **Keep empty sessions** under Settings and it is kept as time only, and you can log an O against it with no scene attached.
 
 **Can I use it without the bridge?** - Treat it as required. Strictly speaking some of it still works, since sessions and O's can be built from Stash's play history alone, but you lose live watch time, the navbar indicator and most of the reason to run Climax in the first place. Installing it is one click during setup.
 

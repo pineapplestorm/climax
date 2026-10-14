@@ -29,6 +29,12 @@ use crate::stash;
 
 /// Garbage-collect tabs idle for longer than this (ms).
 const TAB_PRUNE_MS: i64 = 60_000;
+
+/// How often a live backend stamps a running session as still alive (see
+/// `SessionManager::touch_liveness`). Far below the 10 minute crash-recovery
+/// threshold both binaries use, so a restart that takes seconds always reads as
+/// a quick relaunch.
+const LIVENESS_INTERVAL_SECS: u64 = 30;
 /// A gap longer than this opens a NEW watch run instead of extending the one in
 /// progress. It is per-source because the two paths report at very different
 /// cadences, and the threshold has to sit above the reporting interval or every
@@ -748,6 +754,9 @@ impl SessionManager {
     /// every list / aggregate, matching the user's "brief opens shouldn't
     /// be logged" intent. Sessions with cumshot-only scenes still end
     /// normally — cumshot presence forces the session to count.
+    ///
+    /// The `keep_empty_sessions` setting switches the rule off: with it on, an
+    /// empty session ends normally too, so Climax can be used as a plain timer.
     pub async fn stop(&self) -> Result<Option<Session>> {
         let active = self.active_id().await?;
         let Some(id) = active else { return Ok(None) };
@@ -776,7 +785,12 @@ impl SessionManager {
         .bind(id)
         .fetch_one(&self.pool)
         .await?;
-        let new_status = if has_content != 0 { "ended" } else { "discarded" };
+        // A failed settings read falls back to the default (discard), the
+        // behaviour every install had before the setting existed.
+        let keep_empty = crate::settings::get_keep_empty_sessions(&self.pool)
+            .await
+            .unwrap_or(false);
+        let new_status = if has_content != 0 || keep_empty { "ended" } else { "discarded" };
 
         sqlx::query(
             "UPDATE sessions
@@ -3336,6 +3350,50 @@ impl SessionManager {
         Ok(())
     }
 
+    /// Stamp the running session as alive right now. Returns how many rows it
+    /// touched (0 when nothing is running).
+    ///
+    /// `last_heartbeat` is what crash recovery measures the offline gap from, and
+    /// the name is misleading: it was only ever written when a SCENE advanced (a
+    /// bridge heartbeat or an off-bridge credit). A session with no scene playing
+    /// never moved it past its start, so ten minutes in, ANY restart read the
+    /// whole session as downtime. The headless server then ended it at its start
+    /// time, zero seconds long, and the desktop app offered to discard all of it.
+    /// That hit anyone who starts a session well before a scene, and every
+    /// session of someone using Climax as a plain timer.
+    ///
+    /// Paused sessions are stamped too: a session paused until the crash was
+    /// alive until the crash, and recovery closes its open pause at this time.
+    pub async fn touch_liveness(pool: &SqlitePool) -> Result<u64> {
+        let now = now_ms();
+        let done = sqlx::query(
+            "UPDATE sessions SET last_heartbeat = ?1
+             WHERE status IN ('active','paused') AND ended_at IS NULL
+               AND (last_heartbeat IS NULL OR last_heartbeat < ?1)",
+        )
+        .bind(now)
+        .execute(pool)
+        .await?;
+        Ok(done.rows_affected())
+    }
+
+    /// Keep a running session's "last seen alive" time current for as long as
+    /// this backend is up. Call it once per process, AFTER boot crash recovery
+    /// has read the old value - the loop sleeps before its first stamp, but the
+    /// ordering is what guarantees a restart still sees the real downtime.
+    /// Whichever process owns the database runs it: the desktop app in host
+    /// mode and climax-server, never a desktop app in client mode.
+    pub fn spawn_liveness(pool: SqlitePool) {
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(LIVENESS_INTERVAL_SECS)).await;
+                if let Err(e) = Self::touch_liveness(&pool).await {
+                    tracing::warn!("session liveness stamp failed: {:#}", e);
+                }
+            }
+        });
+    }
+
     /// Detect a session left 'active'/'paused' by an unclean prior run (crash,
     /// power loss, container restart). Returns `(session_id, gap_started_at)` for
     /// the most-recent such session, where `gap_started_at` is its last heartbeat
@@ -3845,5 +3903,232 @@ mod delete_import_tests {
         let n: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM play_imports")
             .fetch_one(&pool).await.unwrap();
         assert_eq!(n, 1);
+    }
+}
+
+#[cfg(test)]
+mod liveness_tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    async fn fresh_pool() -> SqlitePool {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .expect("open in-memory db");
+        sqlx::migrate!("./migrations").run(&pool).await.expect("migrate");
+        pool
+    }
+
+    /// A session that started `mins_ago` and has not been heard from since,
+    /// which is every scene-less session before this fix.
+    async fn session(pool: &SqlitePool, status: &str, mins_ago: i64) -> i64 {
+        let started = now_ms() - mins_ago * 60_000;
+        let ended: Option<i64> = if status == "ended" { Some(started + 1000) } else { None };
+        sqlx::query_scalar(
+            "INSERT INTO sessions (started_at, ended_at, status, assigned_day, created_at, updated_at, last_heartbeat)
+             VALUES (?1, ?2, ?3, '2026-10-13', ?1, ?1, ?1) RETURNING id",
+        )
+        .bind(started)
+        .bind(ended)
+        .bind(status)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+    }
+
+    async fn last_beat(pool: &SqlitePool, id: i64) -> i64 {
+        sqlx::query_scalar("SELECT last_heartbeat FROM sessions WHERE id = ?1")
+            .bind(id)
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    fn manager(pool: &SqlitePool) -> SessionManager {
+        let (tx, _rx) = broadcast::channel(8);
+        SessionManager::new(pool.clone(), tx)
+    }
+
+    /// The bug: 80 minutes into a session with no scene, a restart measured the
+    /// gap from the session's START.
+    #[tokio::test]
+    async fn a_scene_less_session_looks_abandoned_without_the_stamp() {
+        let pool = fresh_pool().await;
+        let id = session(&pool, "active", 80).await;
+        let (sid, gap_start) = manager(&pool).crash_leftover().await.unwrap().unwrap();
+        assert_eq!(sid, id);
+        assert!(now_ms() - gap_start > 79 * 60_000, "gap is the whole session");
+    }
+
+    /// The fix: once stamped, the same restart sees no gap at all.
+    #[tokio::test]
+    async fn the_stamp_makes_a_restart_see_only_the_real_downtime() {
+        let pool = fresh_pool().await;
+        let id = session(&pool, "active", 80).await;
+        assert_eq!(SessionManager::touch_liveness(&pool).await.unwrap(), 1);
+        let (sid, gap_start) = manager(&pool).crash_leftover().await.unwrap().unwrap();
+        assert_eq!(sid, id);
+        assert!(now_ms() - gap_start < 5_000, "gap is measured from the stamp");
+    }
+
+    #[tokio::test]
+    async fn a_paused_session_is_stamped_too() {
+        let pool = fresh_pool().await;
+        let id = session(&pool, "paused", 30).await;
+        let before = last_beat(&pool, id).await;
+        assert_eq!(SessionManager::touch_liveness(&pool).await.unwrap(), 1);
+        assert!(last_beat(&pool, id).await > before);
+    }
+
+    /// A finished session's last-seen time is history and must never move.
+    #[tokio::test]
+    async fn ended_sessions_are_left_alone() {
+        let pool = fresh_pool().await;
+        let ended = session(&pool, "ended", 30).await;
+        let before = last_beat(&pool, ended).await;
+        assert_eq!(SessionManager::touch_liveness(&pool).await.unwrap(), 0);
+        assert_eq!(last_beat(&pool, ended).await, before);
+    }
+
+    /// A stamp must never pull the time BACKWARDS (a session end writes its own
+    /// value, and a clock adjustment must not undo a newer one).
+    #[tokio::test]
+    async fn a_newer_value_is_never_overwritten() {
+        let pool = fresh_pool().await;
+        let id = session(&pool, "active", 5).await;
+        let future = now_ms() + 60_000;
+        sqlx::query("UPDATE sessions SET last_heartbeat = ?1 WHERE id = ?2")
+            .bind(future)
+            .bind(id)
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert_eq!(SessionManager::touch_liveness(&pool).await.unwrap(), 0);
+        assert_eq!(last_beat(&pool, id).await, future);
+    }
+}
+
+#[cfg(test)]
+mod keep_empty_tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    async fn fresh_pool() -> SqlitePool {
+        // stop() kicks off background Stash reads. Tests must never reach a real
+        // Stash that happens to be running on the developer's machine.
+        crate::stash::set_enabled(false);
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .expect("open in-memory db");
+        sqlx::migrate!("./migrations").run(&pool).await.expect("migrate");
+        pool
+    }
+
+    fn manager(pool: &SqlitePool) -> SessionManager {
+        let (tx, _rx) = broadcast::channel(8);
+        SessionManager::new(pool.clone(), tx)
+    }
+
+    async fn active_session(pool: &SqlitePool) -> i64 {
+        let now = now_ms();
+        sqlx::query_scalar(
+            "INSERT INTO sessions (started_at, status, assigned_day, created_at, updated_at)
+             VALUES (?1, 'active', '2026-10-13', ?1, ?1) RETURNING id",
+        )
+        .bind(now - 60_000)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+    }
+
+    async fn status(pool: &SqlitePool, id: i64) -> String {
+        sqlx::query_scalar("SELECT status FROM sessions WHERE id = ?1")
+            .bind(id)
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    /// The default must not move: every install that never touches the setting
+    /// keeps discarding an empty session on stop.
+    #[tokio::test]
+    async fn empty_session_is_discarded_by_default() {
+        let pool = fresh_pool().await;
+        let id = active_session(&pool).await;
+        manager(&pool).stop().await.unwrap();
+        assert_eq!(status(&pool, id).await, "discarded");
+    }
+
+    #[tokio::test]
+    async fn empty_session_is_kept_when_the_setting_is_on() {
+        let pool = fresh_pool().await;
+        crate::settings::set_keep_empty_sessions(&pool, true).await.unwrap();
+        let id = active_session(&pool).await;
+        let stopped = manager(&pool).stop().await.unwrap().expect("a session was stopped");
+        assert_eq!(status(&pool, id).await, "ended");
+        assert!(stopped.ended_at.is_some());
+    }
+
+    /// Turning it back off restores the old rule for the NEXT stop.
+    #[tokio::test]
+    async fn turning_the_setting_off_restores_the_discard() {
+        let pool = fresh_pool().await;
+        crate::settings::set_keep_empty_sessions(&pool, true).await.unwrap();
+        crate::settings::set_keep_empty_sessions(&pool, false).await.unwrap();
+        let id = active_session(&pool).await;
+        manager(&pool).stop().await.unwrap();
+        assert_eq!(status(&pool, id).await, "discarded");
+    }
+
+    /// A scene opened too briefly to count is still "empty". Off discards it,
+    /// on keeps it.
+    #[tokio::test]
+    async fn an_uncounted_scene_alone_follows_the_setting() {
+        for (keep, expected) in [(false, "discarded"), (true, "ended")] {
+            let pool = fresh_pool().await;
+            crate::settings::set_keep_empty_sessions(&pool, keep).await.unwrap();
+            let id = active_session(&pool).await;
+            let item: i64 = sqlx::query_scalar(
+                "INSERT INTO content_items (source_id, external_id, first_seen_at, last_seen_at)
+                 VALUES ((SELECT id FROM sources WHERE key='stash'), 'x', 1, 1) RETURNING id",
+            )
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+            sqlx::query(
+                "INSERT INTO scene_plays (session_id, content_item_id, first_seen_at, last_seen_at, seconds_tracked)
+                 VALUES (?1, ?2, 1, 1, 3)",
+            )
+            .bind(id)
+            .bind(item)
+            .execute(&pool)
+            .await
+            .unwrap();
+            manager(&pool).stop().await.unwrap();
+            assert_eq!(status(&pool, id).await, expected, "keep_empty = {keep}");
+        }
+    }
+
+    /// A cumshot with no scene has always been enough to keep a session, with
+    /// the setting off. The setting is only about the truly empty one.
+    #[tokio::test]
+    async fn an_unlinked_cumshot_keeps_the_session_without_the_setting() {
+        let pool = fresh_pool().await;
+        let id = active_session(&pool).await;
+        sqlx::query(
+            "INSERT INTO o_events (session_id, content_item_id, occurred_at, created_at)
+             VALUES (?1, NULL, ?2, ?2)",
+        )
+        .bind(id)
+        .bind(now_ms())
+        .execute(&pool)
+        .await
+        .unwrap();
+        manager(&pool).stop().await.unwrap();
+        assert_eq!(status(&pool, id).await, "ended");
     }
 }

@@ -18,6 +18,7 @@
   to fill the card width via measured square cell sizing.
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount } from "svelte";
   import { valueOf, METRICS, type DayPoint } from "./trends-data";
   import { formatWatchShort } from "$lib/api";
@@ -107,7 +108,7 @@
     formatWatchShort(recent.length === 0 ? 0 : Math.max(...recent.map((d) => valueOf(d, "watch_time")))),
   );
   const streakNoun = $derived(
-    metric === "cumshots" ? "≥1 cumshot" : metric === "sessions" ? "≥1 session" : "any watch time",
+    metric === "cumshots" ? w("≥1 cumshot") : metric === "sessions" ? "≥1 session" : "any watch time",
   );
 
   const weeks = $derived.by<(DayPoint | null)[][]>(() => {
@@ -181,7 +182,7 @@
 
   function title(d: DayPoint | null | undefined): string {
     if (!d) return "";
-    return `${d.date} · ${d.cumshots} cumshot${d.cumshots === 1 ? "" : "s"} · ${formatWatchShort(d.watch_time_ms)} · ${d.sessions} session${d.sessions === 1 ? "" : "s"}`;
+    return `${d.date} · ${d.cumshots} ${w(d.cumshots === 1 ? "cumshot" : "cumshots")} · ${formatWatchShort(d.watch_time_ms)} · ${d.sessions} session${d.sessions === 1 ? "" : "s"}`;
   }
 </script>
 
@@ -198,7 +199,7 @@
       <div class="cx-trend-chart-controls">
         <MetricDefaultPill scope="trends_heatmap" current={metric} />
         <div class="cx-toggle">
-          <button class:active={metric === "cumshots"} onclick={() => (metric = "cumshots")}>Cumshots</button>
+          <button class:active={metric === "cumshots"} onclick={() => (metric = "cumshots")}>{w("Cumshots")}</button>
           <button class:active={metric === "watch_time"} onclick={() => (metric = "watch_time")}>Watch time</button>
           <button class:active={metric === "sessions"} onclick={() => (metric = "sessions")}>Sessions</button>
         </div>

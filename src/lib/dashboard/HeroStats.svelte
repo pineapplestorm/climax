@@ -18,6 +18,7 @@
      three-droplet, used filled).
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount, onDestroy } from "svelte";
   import Icon from "$lib/Icon.svelte";
   import { api, formatDuration, type HeroStats } from "$lib/api";
@@ -118,10 +119,10 @@
 <section class="hero-stats">
   <div class="primary">
     <!-- Cumshots today — accent (coral) icon -->
-    <div class="stat glyph-droplet" title="Cumshots logged today.">
+    <div class="stat glyph-droplet" title={w("Cumshots logged today.")}>
       <Icon name="cumshot" size={22} color="var(--accent)" filled />
       <div class="value">{loading ? "-" : stats?.cumshots_today ?? 0}</div>
-      <div class="label">Cumshots today</div>
+      <div class="label">{w("Cumshots today")}</div>
     </div>
 
     <!-- Record day — milestone (bone). Clickable: opens that day below. -->
@@ -130,7 +131,7 @@
       class="stat milestone"
       class:clickable={recordClickable}
       disabled={!recordClickable}
-      title="The most cumshots you have logged in one day."
+      title={w("The most cumshots you have logged in one day.")}
       onclick={() => recordClickable && onRecordDay?.(stats!.record_day_date!)}
     >
       <Icon name="trophy" size={22} color="var(--highlight)" />
@@ -190,10 +191,10 @@
     </button>
 
     <!-- Days since last cumshot — accent icon -->
-    <div class="stat" title="Days since your most recent cumshot.">
+    <div class="stat" title={w("Days since your most recent cumshot.")}>
       <Icon name="hourglass" size={22} color="var(--accent)" />
       <div class="value">{loading ? "-" : formatDaysSince(stats?.days_since_last_cumshot ?? null)}</div>
-      <div class="label">Since last cumshot</div>
+      <div class="label">{w("Since last cumshot")}</div>
     </div>
 
     <!-- Longest session — milestone (bone). Clickable: opens that session below. -->

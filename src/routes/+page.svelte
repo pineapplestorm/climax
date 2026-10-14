@@ -7,6 +7,7 @@
   separate Tauri window. They share the same backend state via Tauri commands.
 -->
 <script lang="ts">
+  import { w, wording } from "$lib/wording.svelte";
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import { invoke } from "@tauri-apps/api/core";
@@ -244,8 +245,22 @@
     await refresh();
   }
 
+  // The wrap-up opens whenever the session is going to be KEPT, or has rows to
+  // review: any scene (counted or not), any cumshot (a scene-less one keeps a
+  // session on its own), or "Keep empty sessions" being on. It is the only
+  // place to add a note, adjust the count, pick the day after midnight, or
+  // discard a misfire. A session with none of those is discarded on stop, so
+  // there is nothing to wrap up. The setting is read fresh each time (and only
+  // when the cheaper checks have not already decided) so a change made in
+  // Settings, possibly from another window or device, applies to the next stop.
+  async function needsWrapUp(): Promise<boolean> {
+    if (!active) return false;
+    if (scenes.length > 0 || active.o_count > 0) return true;
+    return api.keepEmptySessionsGet().catch(() => false);
+  }
+
   async function stop() {
-    if (active && scenes.length > 0) {
+    if (active && (await needsWrapUp())) {
       oPromptSessionId = active.id;
       oPromptScenes = scenes;
       oPromptOpen = true;
@@ -383,13 +398,13 @@
   }
   async function quitWrapUp() {
     quitConfirmOpen = false;
-    if (active && scenes.length > 0) {
+    if (active && (await needsWrapUp())) {
       oPromptSessionId = active.id;
       oPromptScenes = scenes;
       oPromptQuitMode = true;
       oPromptOpen = true;
     } else {
-      // Nothing to wrap up — stop (auto-discards if empty) and exit.
+      // Nothing to wrap up - stop (auto-discards the empty session) and exit.
       try {
         await api.sessionStop();
         await api.confirmQuit();
@@ -607,6 +622,10 @@
     }
   });
 
+  // The word used for an O (Settings -> General -> Wording). start() loads it
+  // and keeps it in step with the dashboard window, where it is changed.
+  onMount(() => wording.start());
+
   onDestroy(() => {
     if (timer) clearInterval(timer);
     if (poll) clearInterval(poll);
@@ -640,8 +659,8 @@
             class="win-close quicklog-btn"
             class:on={unlinkedPopoverOpen}
             onclick={toggleUnlinkedPopover}
-            title="Log a cumshot with no scene"
-            aria-label="Log a cumshot with no scene"
+            title={w("Log a cumshot with no scene")}
+            aria-label={w("Log a cumshot with no scene")}
           >
             <Icon name="cumshot" size={15} filled color="var(--accent)" />
             {#if unlinkedCount > 0}<span class="ql-badge">{unlinkedCount}</span>{/if}
@@ -650,7 +669,7 @@
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div class="quicklog-popover" onmousedown={(e) => e.stopPropagation()}>
               <div class="ql-head">
-                <span class="ql-title">Cumshots with no scene</span>
+                <span class="ql-title">{w("Cumshots with no scene")}</span>
                 <span class="ql-scope">{active ? "this session" : "today"}</span>
               </div>
               <div class="ql-stepper">
@@ -667,8 +686,8 @@
                 <button
                   class="cumshot-mini"
                   onclick={addUnlinked}
-                  title="Log a cumshot not tied to any scene"
-                  aria-label="Log a cumshot not tied to any scene"
+                  title={w("Log a cumshot not tied to any scene")}
+                  aria-label={w("Log a cumshot not tied to any scene")}
                 >
                   <Icon name="cumshot" size={16} color="var(--accent)" filled />
                 </button>
@@ -732,7 +751,7 @@
         <div class="quick-stats">
           <span class="qs"><span class="qs-num qs-live">{playingCount}</span> scene{playingCount === 1 ? "" : "s"} playing</span>
           <span class="qs"><span class="qs-num">{active.scene_count}</span> scene{active.scene_count === 1 ? "" : "s"} watched</span>
-          <span class="qs"><span class="qs-num qs-accent">{active.o_count}</span> cumshot{active.o_count === 1 ? "" : "s"}</span>
+          <span class="qs"><span class="qs-num qs-accent">{active.o_count}</span> {w(active.o_count === 1 ? "cumshot" : "cumshots")}</span>
         </div>
 
         {#if scenesVisible.length > 0}
@@ -745,11 +764,11 @@
                 </div>
                 <div class="scene-actions">
                   {#if removable > 0}
-                    <button class="cumshot-mini minus" onclick={() => removeCumshot(scene)} title="Remove the most recent cumshot on this scene" aria-label="Remove cumshot">
+                    <button class="cumshot-mini minus" onclick={() => removeCumshot(scene)} title={w("Remove the most recent cumshot on this scene")} aria-label={w("Remove cumshot")}>
                       <Icon name="minus" size={14} />
                     </button>
                   {/if}
-                  <button class="cumshot-mini" onclick={() => logCumshot(scene)} title="Log a cumshot on this scene" aria-label="Log cumshot">
+                  <button class="cumshot-mini" onclick={() => logCumshot(scene)} title={w("Log a cumshot on this scene")} aria-label={w("Log cumshot")}>
                     <Icon name="cumshot" size={16} color="var(--accent)" filled />
                   </button>
                 </div>

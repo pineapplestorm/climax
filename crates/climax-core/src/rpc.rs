@@ -793,6 +793,17 @@ pub async fn rpc_dispatch(
     rpc_ok(settings::set_launch_behavior(&state.pool, &mode).await.map_err(err)?)
 },
         "hotkey_enabled_get" => rpc_ok(settings::get_hotkey_enabled(&state.pool).await.map_err(err)?),
+        "wording_get" => rpc_ok(settings::get_wording(&state.pool).await.map_err(err)?),
+        "wording_set" => {
+    let value: String = rpc_arg(args, "value")?;
+    rpc_ok(settings::set_wording(&state.pool, &value).await.map_err(err)?)
+}
+        "keep_empty_sessions_get" => rpc_ok(settings::get_keep_empty_sessions(&state.pool).await.map_err(err)?),
+        "keep_empty_sessions_set" => {
+    let enabled: bool = rpc_arg(args, "enabled")?;
+    settings::set_keep_empty_sessions(&state.pool, enabled).await.map_err(err)?;
+    rpc_ok(enabled)
+}
         "backup_settings_get" => rpc_ok(settings::get_backup(&state.pool).await.map_err(err)?),
         "backup_data_folder" => rpc_ok(state.db_dir.to_string_lossy().to_string()),
         "onboarding_needed" => {

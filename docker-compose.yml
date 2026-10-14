@@ -1,9 +1,15 @@
 # Climax server - the common Docker path (see deploy/README.md for the full
 # reference). One service, one volume; set a token before exposing it.
+#
+# This file works on its own: copy it anywhere, or paste the `climax` service
+# into a compose file you already have (next to Stash, for example).
 services:
   climax:
-    build: .
-    # image: ghcr.io/pineapplestorm/climax-server:latest  # once published
+    # The ready-made image, for amd64 and arm64. `latest` follows each release;
+    # put a version here instead (e.g. :1.0.0) to stay on it until you choose.
+    image: ghcr.io/pineapplestorm/climax:latest
+    # To build from this repo's source instead, swap the line above for:
+    # build: .
     container_name: climax
     ports:
       - "9998:9998"

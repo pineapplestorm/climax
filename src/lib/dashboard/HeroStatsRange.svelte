@@ -8,6 +8,7 @@
   visually separating "what changes with the filter" from "what doesn't".
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount, onDestroy } from "svelte";
   import { api, formatDuration, type RangeStats } from "$lib/api";
   import { filterStore, PRESET_LABELS } from "$lib/filter-store.svelte";
@@ -81,7 +82,7 @@
   </div>
   <div class="sub-stat">
     <div class="sub-value accent">{loading ? "-" : stats?.cumshots ?? 0}</div>
-    <div class="sub-label">Cumshots {rangeSuffix}</div>
+    <div class="sub-label">{w("Cumshots")} {rangeSuffix}</div>
   </div>
   <div class="sub-stat">
     <div class="sub-value">{loading ? "-" : stats?.sessions ?? 0}</div>

@@ -107,10 +107,20 @@ pub fn spawn_timer_updater<R: Runtime>(app: AppHandle<R>) {
         // byte-identical (interval_secs stays 1 forever when not a client).
         let mut interval_secs: u64 = 1;
 
+        // The word the tooltip uses for an O follows the Wording setting. It
+        // changes about once in an install's life, so re-read it every tenth
+        // tick instead of every tick (in client mode each read is a round-trip).
+        let mut says_orgasm = false;
+        let mut ticks: u32 = 0;
+
         loop {
             tokio::time::sleep(Duration::from_secs(interval_secs)).await;
             let Some(state) = app.try_state::<AppState>() else { continue };
             interval_secs = if state.client_server_url.is_some() { 3 } else { 1 };
+            if ticks.is_multiple_of(10) {
+                says_orgasm = remote_session::says_orgasm(&state).await;
+            }
+            ticks = ticks.wrapping_add(1);
 
             // active() returns Some for both `active` AND `paused` sessions
             // (paused rows still have ended_at = NULL). A paused session gets
@@ -125,7 +135,12 @@ pub fn spawn_timer_updater<R: Runtime>(app: AppHandle<R>) {
                     let paused = s.status == "paused";
                     let status = if paused { "paused" } else { "running" };
                     let scene_plural = if s.scene_count == 1 { "scene" } else { "scenes" };
-                    let cumshot_plural = if s.o_count == 1 { "cumshot" } else { "cumshots" };
+                    let cumshot_plural = match (says_orgasm, s.o_count == 1) {
+                        (false, true) => "cumshot",
+                        (false, false) => "cumshots",
+                        (true, true) => "orgasm",
+                        (true, false) => "orgasms",
+                    };
                     let tooltip = format!(
                         "Climax \u{2022} {} \u{2022} {} \u{2022} {} {} \u{2022} {} {}",
                         dur, status, s.scene_count, scene_plural, s.o_count, cumshot_plural

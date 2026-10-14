@@ -3,6 +3,7 @@
   sort, grid of square glyph cards (brand-palette hue), inline detail panel.
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount, onDestroy } from "svelte";
   import { api, type BrowseTag } from "$lib/api";
   import BrowsePage from "$lib/dashboard/browse/BrowsePage.svelte";
@@ -31,7 +32,7 @@
   });
 
   const sortOptions = [
-    { value: "cumshots", label: "Most cumshots" },
+    { value: "cumshots", get label() { return w("Most cumshots"); } },
     { value: "play_count", label: "Play count" },
     { value: "watch_time", label: "Watch time" },
     { value: "recent", label: "Recently watched" },
@@ -48,7 +49,7 @@
     for (const t of items) if (t.cumshots > best) best = t.cumshots;
     return new Set(best > 0 ? items.filter((t) => t.cumshots === best).map((t) => t.id) : []);
   });
-  const trophyTitle = $derived(`Ranked #1 of ${items.length} tags by cumshots`);
+  const trophyTitle = $derived(`Ranked #1 of ${items.length} tags by ${w("cumshots")}`);
 
   function applyFilters(list: BrowseTag[], f: Record<string, string>, q: string): BrowseTag[] {
     let r = list;

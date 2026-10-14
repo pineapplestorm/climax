@@ -11,6 +11,7 @@
      shaves stat detail (minutes, then the word "cumshots") to give the
      parent its room back before letting the ellipsis stand. -->
 <script lang="ts">
+  import { w, wording } from "$lib/wording.svelte";
   import Icon from "$lib/Icon.svelte";
   import { type BrowseStudio } from "$lib/api";
   import { colorForKey } from "./palette";
@@ -74,6 +75,8 @@
     void studio.watch_time_ms;
     void studio.play_count;
     void studio.cumshots;
+    // The word itself changes width when the Wording setting flips.
+    void wording.value;
     if (!el) return;
     const ro = new ResizeObserver(() => void refit());
     ro.observe(el);
@@ -97,12 +100,12 @@
     <div class="cx-tile-title cx-tile-title-one" bind:this={titleEl} title={studio.name}>{displayName}</div>
     <div class="cx-tile-stats cx-tile-stats-fill" bind:this={rowEl}>
       {#if studio.cumshots > 0}
-        <span class="cx-tile-cumshots" title="{studio.cumshots} cumshot{studio.cumshots === 1 ? '' : 's'}">
+        <span class="cx-tile-cumshots" title={w(`${studio.cumshots} cumshot${studio.cumshots === 1 ? "" : "s"}`)}>
           <Icon name="cumshot" size={14} color="var(--accent)" filled />
           {#if dropCumshotWord}
             <span class="cx-tile-cumshots-n">{studio.cumshots}</span>
           {:else}
-            <span><span class="cx-tile-cumshots-n">{studio.cumshots}</span> {studio.cumshots === 1 ? "cumshot" : "cumshots"}</span>
+            <span><span class="cx-tile-cumshots-n">{studio.cumshots}</span> {w(studio.cumshots === 1 ? "cumshot" : "cumshots")}</span>
           {/if}
         </span>
         <span class="cx-tile-sep">·</span>

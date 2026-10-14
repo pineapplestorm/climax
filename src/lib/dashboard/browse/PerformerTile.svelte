@@ -20,6 +20,7 @@
      Names are one line here (cx-tile-title-one), never wrapping, so the
      portrait rows stay aligned. -->
 <script lang="ts">
+  import { w, wording } from "$lib/wording.svelte";
   import Icon from "$lib/Icon.svelte";
   import { type BrowsePerformer } from "$lib/api";
   import { watchLabel, withoutSecondWord, runFitLadder } from "./tile-fit";
@@ -84,6 +85,8 @@
     void performer.watch_time_ms;
     void performer.play_count;
     void performer.cumshots;
+    // The word itself changes width when the Wording setting flips.
+    void wording.value;
     if (!el) return;
     const ro = new ResizeObserver(() => void refit());
     ro.observe(el);
@@ -110,12 +113,12 @@
     <div class="cx-tile-title cx-tile-title-one" bind:this={titleEl} title={performer.name}>{displayName}</div>
     <div class="cx-tile-stats cx-tile-stats-fill" bind:this={rowEl}>
       {#if performer.cumshots > 0}
-        <span class="cx-tile-cumshots" title="{performer.cumshots} cumshot{performer.cumshots === 1 ? '' : 's'}">
+        <span class="cx-tile-cumshots" title={w(`${performer.cumshots} cumshot${performer.cumshots === 1 ? "" : "s"}`)}>
           <Icon name="cumshot" size={14} color="var(--accent)" filled />
           {#if dropCumshotWord}
             <span class="cx-tile-cumshots-n">{performer.cumshots}</span>
           {:else}
-            <span><span class="cx-tile-cumshots-n">{performer.cumshots}</span> {performer.cumshots === 1 ? "cumshot" : "cumshots"}</span>
+            <span><span class="cx-tile-cumshots-n">{performer.cumshots}</span> {w(performer.cumshots === 1 ? "cumshot" : "cumshots")}</span>
           {/if}
         </span>
         <span class="cx-tile-sep">·</span>

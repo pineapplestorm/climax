@@ -4,6 +4,7 @@
   from the mock are deferred — that metadata isn't enriched yet.)
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount, onDestroy } from "svelte";
   import { api, type BrowsePerformer } from "$lib/api";
   import type { ChipDef } from "$lib/dashboard/browse/BrowseFilterBar.svelte";
@@ -57,7 +58,7 @@
   ];
 
   const sortOptions = [
-    { value: "cumshots", label: "Most cumshots" },
+    { value: "cumshots", get label() { return w("Most cumshots"); } },
     { value: "play_count", label: "Play count" },
     { value: "watch_time", label: "Watch time" },
     { value: "recent", label: "Recently watched" },
@@ -88,8 +89,8 @@
   const males = $derived(items.filter((p) => isMaleSide(p.gender)));
   const topFemaleIds = $derived(topCumshotIds(females));
   const topMaleIds = $derived(topCumshotIds(males));
-  const femaleTrophyTitle = $derived(`Ranked #1 of ${females.length} female performers by cumshots`);
-  const maleTrophyTitle = $derived(`Ranked #1 of ${males.length} male performers by cumshots`);
+  const femaleTrophyTitle = $derived(`Ranked #1 of ${females.length} female performers by ${w("cumshots")}`);
+  const maleTrophyTitle = $derived(`Ranked #1 of ${males.length} male performers by ${w("cumshots")}`);
 
   function applyFilters(list: BrowsePerformer[], f: Record<string, string>, q: string): BrowsePerformer[] {
     let r = list;

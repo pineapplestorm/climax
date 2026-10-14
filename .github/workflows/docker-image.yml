@@ -1,0 +1,127 @@
+# Builds the Climax server image and publishes it to GitHub's container registry
+# (ghcr.io), so people can run the server without building it from source.
+#
+# It runs by itself whenever a release is published on the public repo. It can
+# also be started by hand: Actions tab -> Docker image -> Run workflow.
+#
+# Nothing needs setting up for it. GitHub gives each run its own short-lived
+# token, and the `permissions` block below is all the access that token has. No
+# personal access token, no repository secret.
+name: Docker image
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish, e.g. 1.0.0. Must match the code being built."
+        required: true
+        type: string
+      latest:
+        description: "Also point the 'latest' tag at this image"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    # Releases only count on the PUBLIC repo. The private dev repo publishes
+    # releases too (the builds-latest transfer prerelease) and those must never
+    # build an image. A run started by hand is allowed anywhere: in the dev repo
+    # it produces a PRIVATE image, which is the safe way to try a change to this
+    # file before it goes public.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.repository == 'pineapplestorm/climax' && !github.event.release.prerelease)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v7
+
+      - name: Work out the version and the image name
+        id: meta
+        env:
+          RAW: ${{ inputs.version || github.event.release.tag_name }}
+          WANT_LATEST: ${{ github.event_name == 'release' || inputs.latest }}
+        run: |
+          version="${RAW#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'$RAW' is not a version like 1.0.0 or v1.0.0."
+            exit 1
+          fi
+          # An image tag must never claim a version the code inside it is not.
+          code="$(sed -n 's/^version = "\(.*\)"/\1/p' crates/climax-server/Cargo.toml | head -n 1)"
+          if [ "$code" != "$version" ]; then
+            echo "::error::Asked to publish $version, but the code being built is version $code."
+            exit 1
+          fi
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          tags="$image:$version"
+          if [ "$WANT_LATEST" = "true" ]; then tags="$tags,$image:latest"; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+          echo "Publishing: $tags"
+
+      # Lets this (amd64) machine run the arm64 image, for the last build step
+      # and for the start-up check below.
+      - name: Set up CPU emulation
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - name: Set up the image builder
+        uses: docker/setup-buildx-action@v4
+
+      # Nothing is published unless BOTH images boot and answer. The publish
+      # step afterwards reuses these builds, so this costs almost no extra time.
+      - name: Build each CPU type and check that it starts
+        run: |
+          for arch in amd64 arm64; do
+            echo "::group::Build $arch"
+            docker buildx build --platform "linux/$arch" --load -t "climax-check:$arch" .
+            echo "::endgroup::"
+            docker run -d --name "check-$arch" --platform "linux/$arch" \
+              -p 127.0.0.1:9998:9998 "climax-check:$arch" >/dev/null
+            ok=""
+            for _ in $(seq 1 60); do
+              if curl -fsS http://127.0.0.1:9998/health 2>/dev/null | grep -q climax; then
+                ok=1
+                break
+              fi
+              sleep 1
+            done
+            if [ -z "$ok" ]; then
+              echo "::error::The $arch image did not answer on /health within 60 seconds."
+              docker logs "check-$arch" || true
+              exit 1
+            fi
+            echo "The $arch image starts and answers."
+            docker rm -f "check-$arch" >/dev/null
+          done
+
+      - name: Sign in to the container registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish both CPU types as one image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.title=Climax server
+            org.opencontainers.image.description=Stats tracking for Stash. Sessions, watch time, trends and records.
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=AGPL-3.0-only

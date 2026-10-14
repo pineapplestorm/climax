@@ -13,6 +13,7 @@
   "estimated" and stay fully editable/deletable in the Sessions tab.
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount } from "svelte";
   import Icon from "$lib/Icon.svelte";
   import ConfirmDialog from "$lib/ConfirmDialog.svelte";
@@ -340,7 +341,7 @@
       onApplied?.();
     } catch (e) {
       console.error("untracked sessions cumshot delete failed", e);
-      errorMsg = humanError(e, "Couldn't remove that cumshot. Please try again in a moment.");
+      errorMsg = w(humanError(e, "Couldn't remove that cumshot. Please try again in a moment."));
       confirmDeleteO = null;
     } finally {
       applying = false;
@@ -378,22 +379,22 @@
       <span class="sub2">{s.play_times.length} {s.play_times.length === 1 ? 'play' : 'plays'}</span>
     </div>
     {#if s.below_threshold}
-      <label class="incl" title={extraFor(c, s) > 0 ? 'This scene has a cumshot, so it stays. Remove the cumshot to leave it out.' : 'Add this scene to the session anyway.'}>
+      <label class="incl" title={extraFor(c, s) > 0 ? w('This scene has a cumshot, so it stays. Remove the cumshot to leave it out.') : 'Add this scene to the session anyway.'}>
         <input type="checkbox" checked={brought} disabled={extraFor(c, s) > 0 || applying} onchange={() => toggleInclude(c, s)} />
         Include
       </label>
     {/if}
-    <div class="cstep" title="Add or remove cumshots for this scene - updates the total cumshot count in both Stash and Climax.">
+    <div class="cstep" title={w("Add or remove cumshots for this scene - updates the total cumshot count in both Stash and Climax.")}>
       <button class="cs-btn"
         disabled={(extraFor(c, s) === 0 && s.o_event_ids.length === 0) || applying}
         onclick={() => minusCumshot(c, s)}
-        title="Remove a cumshot - affects both Stash and Climax."
-        aria-label="Remove cumshot">-</button>
+        title={w("Remove a cumshot - affects both Stash and Climax.")}
+        aria-label={w("Remove cumshot")}>-</button>
       <span class="cs-n">
         <Icon name="cumshot" size={13} color="var(--accent)" filled />
         {s.cumshot_times.length + extraFor(c, s)}
       </span>
-      <button class="cs-btn" onclick={() => bumpCumshot(c, s, 1)} aria-label="Add cumshot">+</button>
+      <button class="cs-btn" onclick={() => bumpCumshot(c, s, 1)} aria-label={w("Add cumshot")}>+</button>
     </div>
   </div>
 {/snippet}
@@ -553,8 +554,8 @@
 
 {#if confirmDeleteO}
   <ConfirmDialog
-    title="Remove this cumshot?"
-    message="This removes the cumshot from both Climax and Stash. This can't be undone from here."
+    title={w("Remove this cumshot?")}
+    message={w("This removes the cumshot from both Climax and Stash. This can't be undone from here.")}
     confirmLabel="Remove"
     cancelLabel="Cancel"
     variant="danger"

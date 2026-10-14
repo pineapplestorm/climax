@@ -19,6 +19,7 @@
   as its right edge.
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount, onDestroy } from "svelte";
   import { api, formatDuration, formatTimeOnly, type Session } from "$lib/api";
   import Icon from "$lib/Icon.svelte";
@@ -102,7 +103,7 @@
       <span><strong>{formatDuration(totalDurationMs)}</strong></span>
       <span>{sessions.length} session{sessions.length === 1 ? "" : "s"}</span>
       <span>{totalScenes} scene{totalScenes === 1 ? "" : "s"}</span>
-      <span class="cumshot-count">{totalCumshots} cumshot{totalCumshots === 1 ? "" : "s"}</span>
+      <span class="cumshot-count">{totalCumshots} {w(totalCumshots === 1 ? "cumshot" : "cumshots")}</span>
     </div>
   </div>
 
@@ -157,7 +158,7 @@
               onmouseenter={() => (hoveredId = s.id)}
               onmouseleave={() => (hoveredId = null)}
               onclick={() => onSelect(s.id)}
-              aria-label={`Session starting ${formatTimeOnly(s.started_at)}, ${formatDuration(s.effective_duration_ms)}, ${s.o_count} cumshot${s.o_count === 1 ? "" : "s"}`}
+              aria-label={`Session starting ${formatTimeOnly(s.started_at)}, ${formatDuration(s.effective_duration_ms)}, ${s.o_count} ${w(s.o_count === 1 ? "cumshot" : "cumshots")}`}
             ></button>
 
             <!-- Cumshot chip floating outside the bar -->
@@ -193,7 +194,7 @@
                   <span class="pop-sep">•</span>
                   <span class="pop-cumshots">
                     <Icon name="cumshot" size={10} filled />
-                    {s.o_count} cumshot{s.o_count === 1 ? "" : "s"}
+                    {s.o_count} {w(s.o_count === 1 ? "cumshot" : "cumshots")}
                   </span>
                 </div>
                 {#if isActive}

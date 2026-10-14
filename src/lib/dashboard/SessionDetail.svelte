@@ -13,6 +13,7 @@
   Expanded inline below the SessionStrip when the user clicks a session.
 -->
 <script lang="ts">
+  import { w } from "$lib/wording.svelte";
   import { onMount, onDestroy } from "svelte";
   import {
     api,
@@ -278,7 +279,7 @@
 
   const confirmTitle = $derived.by(() => {
     if (!pending) return "";
-    if (pending.kind === "cumshot") return "Delete this cumshot?";
+    if (pending.kind === "cumshot") return w("Delete this cumshot?");
     if (pending.kind === "scene") return "Remove this scene from the session?";
     return "Delete this session?";
   });
@@ -293,15 +294,15 @@
       // count still gates whether the sentence shows, it just isn't printed.
       const extra =
         pending.oCount > 0
-          ? " Any cumshots on this scene are kept too, sitting outside any session until you re-home them."
+          ? w(" Any cumshots on this scene are kept too, sitting outside any session until you re-home them.")
           : "";
       return (
         `"Remove from session" detaches this scene but KEEPS its history in Stash, so you can re-home it later (its own session, or fold into another).${extra}\n\n` +
-        `"Delete everywhere" also deletes its plays/cumshots in Stash - use this button only if it never really happened.`
+        w(`"Delete everywhere" also deletes its plays/cumshots in Stash - use this button only if it never really happened.`)
       );
     }
     return (
-      "Permanently delete this session from Climax. Its watch time, play counts, and cumshots will also be deleted in Stash. This cannot be undone."
+      w("Permanently delete this session from Climax. Its watch time, play counts, and cumshots will also be deleted in Stash. This cannot be undone.")
     );
   });
 
@@ -684,6 +685,13 @@
   // Min vertical gap between same-side cumshot drops; also reserved in a
   // segment's height so a cumshot-heavy stretch has room for its drops.
   const DROP_MIN_GAP_PX = 24;
+  // The closest a drop may sit to the top of the timeline. The session's start
+  // time label lives there, is opaque, is drawn ABOVE the drops, and (unlike
+  // every other time mark) is never removed to make way for one. So a cumshot
+  // logged in the first moments of a session used to be drawn exactly under it,
+  // fully covered: the count said 3 and the timeline showed 2. Half the label
+  // (13px) plus half a drop (10px), plus a pixel of air.
+  const START_MARK_CLEAR_PX = 24;
   // Comfortable minimum height for the gap between two adjacent time marks.
   // Quiet stretches collapse to this floor; busy ones expand past it. This is
   // the lever that keeps short sessions legible without over-stretching long,
@@ -859,7 +867,10 @@
       const card = cardForCumshot.get(oe.id);
       const side = card?.side ?? "left";
       const blockKey = card?.block.key ?? null;
-      const ideal = timeToPx(oe.occurred_at);
+      // Never above the start label's footprint - see START_MARK_CLEAR_PX. The
+      // exact time is still on the drop's tooltip, so nudging it down a few
+      // pixels costs nothing and hiding it costs the whole mark.
+      const ideal = Math.max(timeToPx(oe.occurred_at), START_MARK_CLEAR_PX);
       let topPx: number;
       if (side === "left") {
         topPx = Math.max(ideal, lastLeft + DROP_MIN_GAP_PX);
@@ -893,7 +904,10 @@
   // (the drop wins — its time is on the card pill anyway); the start mark is
   // always kept as the top reference.
   type TimeTick = { atMs: number; topPx: number; label: string };
-  const TICK_DROP_CLEAR_PX = 15;
+  // How close a drop may come to a time mark before the mark gives way. It has
+  // to cover the two half-heights (label 13px, drop 10px): at the old 15, a drop
+  // 15 to 22px from a mark kept the mark and sat up to a third hidden under it.
+  const TICK_DROP_CLEAR_PX = 23;
   const timeTicks = $derived.by<TimeTick[]>(() => {
     if (!session) return [];
     const dropTops = positionedDrops.map((d) => d.topPx);
@@ -1015,7 +1029,7 @@
           <span><strong>{formatDuration(session.effective_duration_ms)}</strong> session time</span>
           <span><strong>{formatDuration(totalSceneTimeMs)}</strong> watched</span>
           <span>{scenes.length} scene{scenes.length === 1 ? "" : "s"}</span>
-          <span class="cumshot-count">{totalCumshots} cumshot{totalCumshots === 1 ? "" : "s"}</span>
+          <span class="cumshot-count">{totalCumshots} {w(totalCumshots === 1 ? "cumshot" : "cumshots")}</span>
         </div>
       {/if}
     </div>
@@ -1103,7 +1117,7 @@
           </button>
         </div>
         {#if timesError}
-          <div class="te-msg err">{timesError}</div>
+          <div class="te-msg err">{w(timesError)}</div>
         {:else if timesChanged && liveProblem}
           <div class="te-msg warn">{liveProblem}</div>
         {:else}
@@ -1112,7 +1126,7 @@
           </div>
         {/if}
         <div class="te-unlinked">
-          <span class="te-label">Unlinked cumshots</span>
+          <span class="te-label">{w("Unlinked cumshots")}</span>
           {#if unlinkedOEvents.length > 0}
             <div class="unlinked-items">
               {#each unlinkedOEvents as oe (oe.id)}
@@ -1128,8 +1142,8 @@
                   <button
                     class="cumshot-del"
                     onclick={() => (pending = { kind: "cumshot", oId: oe.id })}
-                    aria-label="Delete this cumshot"
-                    title="Delete cumshot"
+                    aria-label={w("Delete this cumshot")}
+                    title={w("Delete cumshot")}
                   ><Icon name="x" size={10} /></button>
                 </div>
               {/each}
@@ -1139,11 +1153,11 @@
             class="te-add-unlinked"
             disabled={busy}
             onclick={addUnlinkedCumshot}
-            title="Log a cumshot with no scene attached. It counts towards this session but is never sent to Stash."
+            title={w("Log a cumshot with no scene attached. It counts towards this session but is never sent to Stash.")}
           >
             <Icon name="cumshot" size={12} filled color="var(--accent)" />
             <Icon name="plus" size={10} />
-            <span>Add cumshot (no scene)</span>
+            <span>{w("Add cumshot (no scene)")}</span>
           </button>
           <div class="te-msg hint">No scene attached, so nothing is sent to Stash. Its time always stays inside the session.</div>
         </div>
@@ -1220,7 +1234,7 @@
             <div class="sp-row">
               <div class="sp-thumb ph"><Icon name="cumshot" size={14} filled color="var(--accent)" /></div>
               <div class="sp-meta">
-                <span class="sp-name">Cumshot</span>
+                <span class="sp-name">{w("Cumshot")}</span>
                 <span class="sp-info">{formatTimeOnly(o.occurred_at)} · from Stash</span>
               </div>
               <div class="sp-acts">
@@ -1288,7 +1302,7 @@
             style={`top: ${d.topPx}px;`}
             onmouseenter={() => (hoveredKey = d.blockKey)}
             onmouseleave={() => (hoveredKey = null)}
-            title={`${formatTimeOnly(d.oe.occurred_at)} • ${unlinked ? "unlinked cumshot (no scene)" : "cumshot"}`}
+            title={`${formatTimeOnly(d.oe.occurred_at)} • ${w(unlinked ? "unlinked cumshot (no scene)" : "cumshot")}`}
           >
             <Icon name="cumshot" size={14} filled color="var(--accent)" />
           </div>
@@ -1434,8 +1448,8 @@
                         <button
                           class="cumshot-del"
                           onclick={(e) => { e.stopPropagation(); pending = { kind: "cumshot", oId: oe.id }; }}
-                          aria-label="Delete this cumshot"
-                          title="Delete cumshot"
+                          aria-label={w("Delete this cumshot")}
+                          title={w("Delete cumshot")}
                         ><Icon name="x" size={9} /></button>
                       {/if}
                     </span>
@@ -1445,8 +1459,8 @@
                       class="cumshot-add"
                       disabled={busy}
                       onclick={(e) => { e.stopPropagation(); addCumshot(pc.scene, pc.block.endMs); }}
-                      title="Log a cumshot on this scene. It counts towards this session and is sent to Stash."
-                      aria-label="Log a cumshot on this scene"
+                      title={w("Log a cumshot on this scene. It counts towards this session and is sent to Stash.")}
+                      aria-label={w("Log a cumshot on this scene")}
                     >
                       <Icon name="cumshot" size={10} filled />
                       <Icon name="plus" size={9} />

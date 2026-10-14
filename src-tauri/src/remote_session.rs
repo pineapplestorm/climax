@@ -296,6 +296,21 @@ pub async fn idle_setting(state: &AppState) -> IdleDetectionSetting {
     }
 }
 
+/// Whether the interface says "orgasm" instead of the default "cumshot". Only
+/// the tray tooltip needs it on the Rust side. Client mode reads the SERVER's
+/// choice for the same reason `idle_setting` does; any error reads as the
+/// default.
+pub async fn says_orgasm(state: &AppState) -> bool {
+    let value = match &state.client_server_url {
+        Some(base) => rpc(base, state.client_server_token.as_deref(), "wording_get", serde_json::json!({}))
+            .await
+            .ok()
+            .and_then(|v| v.as_str().map(str::to_string)),
+        None => settings::get_wording(&state.pool).await.ok(),
+    };
+    value.as_deref() == Some("orgasm")
+}
+
 /// Startup prefs, read at BOOT in client mode - before `AppState` exists, so
 /// this takes the address/token directly rather than a state handle.
 ///
