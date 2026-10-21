@@ -16,6 +16,13 @@
          timeout is a safety net if that somehow never fires. */
       html { background-color: #0A0B0F; }
       body { visibility: hidden; }
+      /* While this window is minimised or hidden in the tray, freeze every
+         animation so nothing redraws for a window nobody can see. The class is
+         set by src/lib/pause-when-hidden.ts. A paused animation produces no
+         frames, and the page picks up where it left off when shown again. */
+      html.cx-hidden *,
+      html.cx-hidden *::before,
+      html.cx-hidden *::after { animation-play-state: paused !important; }
     </style>
     <script>
       setTimeout(function () {

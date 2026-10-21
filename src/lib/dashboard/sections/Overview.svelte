@@ -14,6 +14,7 @@
   below the filter bar.
 -->
 <script lang="ts">
+  import { pulse } from "$lib/pulse";
   import { w } from "$lib/wording.svelte";
   import { onMount, onDestroy, tick } from "svelte";
   import OPromptModal from "$lib/OPromptModal.svelte";
@@ -733,7 +734,7 @@
     <section class="card session-card">
       <div class="session-main">
         <div class="session-status">
-          <div class="dot" class:active={active.status === "active"} class:paused={active.status === "paused"}></div>
+          <div class="dot" class:active={active.status === "active"} use:pulse={active.status === "active"} class:paused={active.status === "paused"}></div>
           <span>{active.status === "paused" ? "Session paused" : "Session running"}</span>
         </div>
         <div class="session-timer">{formatDuration(livenessElapsed)}</div>
@@ -943,12 +944,22 @@
     min-width: 130px;
   }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); transition: background 200ms; }
-  .dot.active { background: var(--green); animation: pulse 1.6s infinite ease-in-out; }
-  .dot.paused { background: var(--amber); }
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 #4ade8055; }
-    50%      { box-shadow: 0 0 0 6px #4ade8000; }
+  .dot.active { background: var(--green); position: relative; }
+  /* Low-rate pulse driven by --cx-pulse from src/lib/pulse.ts (about 10 frames a
+     second, not 60), changing only transform + opacity, so a running session does not
+     repaint the window every frame. 8px dot + 6px halo = scale 20/8. */
+  .dot.active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: inherit;
+    pointer-events: none;
+    will-change: transform, opacity;
+    transform: scale(calc(1 + 1.5 * var(--cx-pulse, 0)));
+    opacity: calc(0.33 * (1 - var(--cx-pulse, 0)));
   }
+  .dot.paused { background: var(--amber); }
   .session-timer {
     font-family: "JetBrains Mono", "SF Mono", monospace;
     font-size: 32px; font-weight: 600; line-height: 1;

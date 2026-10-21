@@ -1,6 +1,6 @@
 [package]
 name = "climax-core"
-version = "1.1.0"
+version = "1.1.1"
 description = "Climax core engine - DB, models, settings, Stash client, aggregations, mirror/reconstruct, session engine. Tauri-free; depended on by the desktop app and (later) the headless server."
 authors = ["pineapplestorm"]
 edition = "2021"

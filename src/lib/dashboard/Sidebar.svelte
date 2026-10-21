@@ -8,6 +8,7 @@
   the Climax logo.
 -->
 <script lang="ts">
+  import { pulse } from "$lib/pulse";
   import type { ComponentProps } from "svelte";
   import Icon from "$lib/Icon.svelte";
   import ConnectionBadge from "$lib/ConnectionBadge.svelte";
@@ -52,7 +53,7 @@
   <div class="brand">
     <img class="brand-mark" src="/climax-icon.png" alt="Climax" width="24" height="24" />
     <span class="brand-name">Climax</span>
-    <div class="dot" class:active={isSessionActive} class:paused={isSessionPaused} aria-label={isSessionActive ? "session running" : isSessionPaused ? "session paused" : "idle"}></div>
+    <div class="dot" class:active={isSessionActive} use:pulse={isSessionActive} class:paused={isSessionPaused} aria-label={isSessionActive ? "session running" : isSessionPaused ? "session paused" : "idle"}></div>
     <ConnectionBadge />
   </div>
 
@@ -170,14 +171,23 @@
   }
   .dot.active {
     background: var(--live);
-    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.45);
-    animation: pulse 1.6s infinite ease-in-out;
+    position: relative;
+  }
+  /* Low-rate pulse driven by --cx-pulse from src/lib/pulse.ts (about 10 frames a
+     second, not 60), changing only transform + opacity, so a running session does not
+     repaint the window every frame. 8px dot + 6px halo = scale 20/8. */
+  .dot.active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: inherit;
+    pointer-events: none;
+    will-change: transform, opacity;
+    transform: scale(calc(1 + 1.5 * var(--cx-pulse, 0)));
+    opacity: calc(0.45 * (1 - var(--cx-pulse, 0)));
   }
   .dot.paused { background: var(--warn); }
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.45); }
-    50%      { box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
-  }
 
   .nav {
     flex: 1;

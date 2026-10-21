@@ -7,7 +7,9 @@
   separate Tauri window. They share the same backend state via Tauri commands.
 -->
 <script lang="ts">
+  import { pulse } from "$lib/pulse";
   import { w, wording } from "$lib/wording.svelte";
+  import { pauseAnimationsWhenHidden } from "$lib/pause-when-hidden";
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import { invoke } from "@tauri-apps/api/core";
@@ -625,6 +627,8 @@
   // The word used for an O (Settings -> General -> Wording). start() loads it
   // and keeps it in step with the dashboard window, where it is changed.
   onMount(() => wording.start());
+  // Freeze animations while this window is minimised or hidden in the tray.
+  onMount(() => pauseAnimationsWhenHidden());
 
   onDestroy(() => {
     if (timer) clearInterval(timer);
@@ -649,7 +653,7 @@
     <div class="brand" data-tauri-drag-region>
       <img class="brand-mark" src="/climax-icon.png" alt="Climax" draggable="false" width="22" height="22" />
       <span class="title">Climax</span>
-      <div class="dot" class:active={active && active.status === "active"} class:paused={active && active.status === "paused"}></div>
+      <div class="dot" class:active={active && active.status === "active"} use:pulse={active?.status === "active"} class:paused={active && active.status === "paused"}></div>
       <ConnectionBadge />
     </div>
     {#if !toastMode}
@@ -954,13 +958,25 @@
   }
   .dot.active {
     background: var(--green);
-    animation: pulse 1.6s infinite ease-in-out;
+    position: relative;
+  }
+  /* The pulse is a copy of the dot that grows and fades. Its size and fade
+     come from --cx-pulse, which src/lib/pulse.ts sets about 10 times a second
+     (not 60 - see that file for the measurements), and only transform and
+     opacity change, so nothing is repainted. Same look as the old box-shadow
+     pulse: 7px dot + 6px halo = scale 19/7. */
+  .dot.active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: inherit;
+    pointer-events: none;
+    will-change: transform, opacity;
+    transform: scale(calc(1 + 1.714 * var(--cx-pulse, 0)));
+    opacity: calc(0.33 * (1 - var(--cx-pulse, 0)));
   }
   .dot.paused { background: var(--amber); }
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 #4ade8055; }
-    50%      { box-shadow: 0 0 0 6px #4ade8000; }
-  }
   .dashboard-link {
     background: transparent;
     border: 1px solid var(--border);

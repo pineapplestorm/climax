@@ -19,6 +19,7 @@
   as its right edge.
 -->
 <script lang="ts">
+  import { pulse } from "$lib/pulse";
   import { w } from "$lib/wording.svelte";
   import { onMount, onDestroy } from "svelte";
   import { api, formatDuration, formatTimeOnly, type Session } from "$lib/api";
@@ -152,7 +153,7 @@
             <!-- The bar itself — no text, just a coloured rect -->
             <button
               class="session-bar"
-              class:active={isActive}
+              class:active={isActive} use:pulse={isActive}
               class:selected={isSelected}
               style={`left: ${left}%; width: ${width}%;`}
               onmouseenter={() => (hoveredId = s.id)}
@@ -340,11 +341,20 @@
   .session-bar.active {
     background: var(--live, #4ade80);
     border-color: var(--live, #4ade80);
-    animation: bar-pulse 2s infinite ease-in-out;
   }
-  @keyframes bar-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.34); }
-    50%      { box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
+  /* A soft halo that breathes around the live bar. Opacity only, so the GPU
+     composites it without repainting. (A bar is not round, so the dots' grow-
+     and-fade cannot be copied with a scale - it would spread far wider than
+     tall - hence a fixed 4px halo fading in and out instead.) */
+  .session-bar.active::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: 8px;
+    background: var(--live, #4ade80);
+    pointer-events: none;
+    will-change: opacity;
+    opacity: calc(0.22 * var(--cx-pulse, 0));
   }
 
   /* Cumshot chip — sits just outside the bar's right edge (or left,

@@ -23,6 +23,7 @@
   to true, when Finish runs.
 -->
 <script lang="ts">
+  import { pulse } from "$lib/pulse";
   import { w } from "$lib/wording.svelte";
   import { onMount } from "svelte";
   import Icon from "$lib/Icon.svelte";
@@ -437,7 +438,7 @@
         </div>
       {:else if bridgeStatus.installed}
         <div class="bridge-state">
-          <span class="dot {bridgeStatus.connected ? 'live' : 'idle'}"></span>
+          <span class="dot {bridgeStatus.connected ? 'live' : 'idle'}" use:pulse={bridgeStatus.connected}></span>
           <span>
             Bridge installed{bridgeStatus.version ? ` (v${bridgeStatus.version})` : ""}.
             {#if bridgeStatus.connected}
@@ -742,11 +743,20 @@
   .dot.idle { background: #f2c14e; }
   .dot.live {
     background: #4ade80;
-    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6);
-    animation: pulse 1.6s ease-out infinite;
+    position: relative;
   }
-  @keyframes pulse {
-    to { box-shadow: 0 0 0 7px rgba(74, 222, 128, 0); }
+  /* Compositor-only pulse (transform + opacity) - see the note on the
+     tracker's dot. 9px dot + 7px halo = scale 23/9, fading as the box-shadow did. */
+  .dot.live::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: inherit;
+    pointer-events: none;
+    will-change: transform, opacity;
+    transform: scale(calc(1 + 1.556 * var(--cx-pulse, 0)));
+    opacity: calc(0.6 * (1 - var(--cx-pulse, 0)));
   }
 
   .callout {

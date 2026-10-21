@@ -2,6 +2,12 @@
 
 All notable changes to Climax. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.1] - 2026-10-24
+
+### Fixed
+
+- **A running session no longer keeps your CPU busy.** The pulsing "live" dots repainted every open Climax window about 60 times a second for the whole session, around a core and a half on a typical PC, and kept going while the windows were minimised. They now update about 10 times a second instead of 60 and change only what the graphics card can move cheaply, and nothing animates at all while a window is minimised or hidden in the tray. They look the same.
+
 ## [1.1.0] - 2026-10-15
 
 ### Added

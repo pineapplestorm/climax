@@ -9,6 +9,7 @@
 -->
 <script lang="ts">
   import { wording } from "$lib/wording.svelte";
+  import { pauseAnimationsWhenHidden } from "$lib/pause-when-hidden";
   import { onMount, onDestroy } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -145,6 +146,8 @@
   // The word used for an O (Settings -> General -> Wording). start() loads it
   // and keeps it in step with the tracker window and other devices.
   onMount(() => wording.start());
+  // Freeze animations while this window is minimised (or the tab is hidden).
+  onMount(() => pauseAnimationsWhenHidden());
 
   // Re-establish .content's scroll position after cross-section navigation:
   // Back restores the origin view's position, a sidebar switch starts at the

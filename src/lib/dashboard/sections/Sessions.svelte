@@ -13,6 +13,7 @@
   backend delete_session/cascade rollback).
 -->
 <script lang="ts">
+  import { pulse } from "$lib/pulse";
   import { w } from "$lib/wording.svelte";
   import { onMount, onDestroy, tick } from "svelte";
   import Select from "$lib/Select.svelte";
@@ -702,7 +703,7 @@
                 <span class="start-date">{sl.date}</span>
                 <span class="start-time">{sl.time}</span>
                 {#if isActive}
-                  <span class="live-dot" class:paused={s.status === "paused"} title={s.status === "paused" ? "paused" : "running"}></span>
+                  <span class="live-dot" class:paused={s.status === "paused"} use:pulse={s.status !== "paused"} title={s.status === "paused" ? "paused" : "running"}></span>
                 {/if}
                 {#if s.estimated}
                   <span class="est-badge" title="Reconstructed from Stash's history rather than tracked live, so the times are approximate.">est</span>
@@ -1054,9 +1055,24 @@
     border-radius: 50%;
     background: var(--live);
     align-self: center;
-    animation: pulse 1.6s infinite ease-in-out;
+    position: relative;
   }
-  .live-dot.paused { background: var(--warn); animation: none; }
+  /* Low-rate pulse driven by --cx-pulse from src/lib/pulse.ts (about 10 frames a
+     second, not 60), changing only transform + opacity, so a running session does not
+     repaint the window every frame. 7px dot + 5px halo = scale 17/7. */
+  .live-dot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: inherit;
+    pointer-events: none;
+    will-change: transform, opacity;
+    transform: scale(calc(1 + 1.429 * var(--cx-pulse, 0)));
+    opacity: calc(0.45 * (1 - var(--cx-pulse, 0)));
+  }
+  .live-dot.paused { background: var(--warn); }
+  .live-dot.paused::after { animation: none; opacity: 0; }
   .est-badge {
     align-self: center;
     font-size: 9px;
@@ -1068,10 +1084,6 @@
     border-radius: 5px;
     padding: 1px 5px;
     line-height: 1.5;
-  }
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.45); }
-    50%      { box-shadow: 0 0 0 5px rgba(74, 222, 128, 0); }
   }
 
   input[type="checkbox"] {
